@@ -27,6 +27,11 @@
 2. `spl-token create-token --decimals 6` 으로 BAY mint가 devnet에 존재한다
 3. 지정된 테스트 지갑이 BAY 잔액 > 0을 보유하고 있다
 
+**Plans:** 1 plan
+
+Plans:
+- [ ] 01-01-PLAN.md — Initialize Anchor workspace + create BAY token on devnet + mint to test wallet
+
 ---
 
 ## Phase 2: Program Core
