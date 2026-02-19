@@ -51,6 +51,12 @@ Plans:
 3. `purchase` 성공 후 PurchaseRecord PDA가 구매자/상품/타임스탬프를 담고 있다
 4. 잔액 부족 상태에서 `purchase` 호출 시 에러를 반환한다
 
+**Plans:** 2 plans
+
+Plans:
+- [ ] 02-01-PLAN.md — Implement full Anchor program (Cargo.toml update + complete lib.rs with all 3 instructions, PDAs, errors)
+- [ ] 02-02-PLAN.md — Deploy to devnet, run smoke tests, record StoreConfig PDA in .env, human verification
+
 ---
 
 ## Phase 3: Client
