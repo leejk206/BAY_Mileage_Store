@@ -5,7 +5,12 @@
       "Bash(git -C:*)",
       "Skill(gsd:plan-phase)",
       "WebSearch",
-      "mcp__ide__executeCode"
+      "mcp__ide__executeCode",
+      "Bash(anchor:*)",
+      "Bash(solana:*)",
+      "Bash(spl-token:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
     ]
   }
 }
