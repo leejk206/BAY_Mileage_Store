@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git -C \"C:/Users/ljk91/OneDrive/문서/GitHub/BAY_Mileage_Store\" add .planning/)",
+      "Bash(git -C:*)",
+      "Skill(gsd:plan-phase)",
+      "WebSearch",
+      "mcp__ide__executeCode"
+    ]
+  }
+}
