@@ -54,7 +54,7 @@ Plans:
 **Plans:** 2 plans
 
 Plans:
-- [ ] 02-01-PLAN.md — Implement full Anchor program (Cargo.toml update + complete lib.rs with all 3 instructions, PDAs, errors)
+- [x] 02-01-PLAN.md — Implement full Anchor program (Cargo.toml update + complete lib.rs with all 3 instructions, PDAs, errors)
 - [ ] 02-02-PLAN.md — Deploy to devnet, run smoke tests, record StoreConfig PDA in .env, human verification
 
 ---
