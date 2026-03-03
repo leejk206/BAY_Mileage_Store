@@ -1,0 +1,24 @@
+{
+  "name": "bay-mileage-store",
+  "version": "0.1.0",
+  "description": "BAY Mileage Store Anchor workspace",
+  "scripts": {
+    "test": "ts-mocha -p ./tsconfig.json -t 1000000 \"tests/**/*.ts\""
+  },
+  "dependencies": {
+    "@coral-xyz/anchor": "^0.32.0",
+    "@solana/spl-token": "^0.4.9",
+    "@solana/web3.js": "^1.98.0"
+  },
+  "devDependencies": {
+    "@types/bn.js": "^5.1.6",
+    "@types/chai": "^4.3.11",
+    "@types/mocha": "^10.0.6",
+    "@types/node": "^22.0.0",
+    "bn.js": "^5.2.1",
+    "chai": "^4.3.10",
+    "mocha": "^10.3.0",
+    "ts-mocha": "^10.0.0",
+    "typescript": "^5.3.3"
+  }
+}
