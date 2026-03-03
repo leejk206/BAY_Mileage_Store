@@ -17,7 +17,8 @@ import {
 import * as fs from "fs";
 import * as path from "path";
 import * as assert from "assert";
-import idl from "../target/idl/bay_mileage_store.json";
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const idl = require("../target/idl/bay_mileage_store.json");
 
 // -- Constants ----------------------------------------------------------------
 
