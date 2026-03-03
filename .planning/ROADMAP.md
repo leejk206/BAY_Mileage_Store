@@ -9,7 +9,7 @@
 | # | Phase | Goal | Requirements | Status |
 |---|-------|------|--------------|--------|
 | 1 | Foundation | Anchor 프로젝트 초기화 + BAY SPL Token devnet 배포 | TOK-01, TOK-02 | Pending |
-| 2 | Program Core | 온체인 상품 카탈로그 + burn 구매 로직 구현 | CAT-01, CAT-02, PUR-01, PUR-02, PUR-03 | Pending |
+| 2 | Program Core | 온체인 상품 카탈로그 + burn 구매 로직 구현 | CAT-01, CAT-02, PUR-01, PUR-02, PUR-03 | Complete |
 | 3 | Client | 상품 조회·구매·기록 조회 CLI 스크립트 | CLI-01, CLI-02, CLI-03 | Pending |
 
 ---
@@ -55,7 +55,7 @@ Plans:
 
 Plans:
 - [x] 02-01-PLAN.md — Implement full Anchor program (Cargo.toml update + complete lib.rs with all 3 instructions, PDAs, errors)
-- [ ] 02-02-PLAN.md — Deploy to devnet, run smoke tests, record StoreConfig PDA in .env, human verification
+- [x] 02-02-PLAN.md — Deploy to devnet, run smoke tests, record StoreConfig PDA in .env, human verification
 
 ---
 

@@ -5,15 +5,15 @@
 See: .planning/PROJECT.md (updated 2026-02-18)
 
 **Core value:** BAY 토큰 소각을 통한 학회 마일리지 스토어
-**Current focus:** Phase 2 Program Core — Plan 01 complete, Plan 02 pending
+**Current focus:** Phase 2 Program Core — All plans complete (2/2)
 
 ## Current Status
 
 - **Milestone:** v1.0
 - **Active Phase:** 2
-- **Phase Status:** In Progress (1/2 plans complete)
-- **Last Plan:** 02-01 (Implement full Anchor program — all 3 instructions + PDAs + errors)
-- **Stopped At:** Completed 02-program-core/02-01-PLAN.md
+- **Phase Status:** Complete (2/2 plans complete)
+- **Last Plan:** 02-02 (Deploy to devnet, run smoke tests, record StoreConfig PDA)
+- **Stopped At:** Completed 02-program-core/02-02-PLAN.md
 - **Last Session:** 2026-03-03
 
 ## On-Chain State
@@ -24,13 +24,15 @@ See: .planning/PROJECT.md (updated 2026-02-18)
 | BAY Mint | `agYm2drYnvKnGQoXh1iZQ4iWYZPa87qtGe4baTNckdB` |
 | Test Wallet | `GZuFe8aFbJNeg1HAj7fqzCjsRo18S9jaFTAY8cGLV8p3` |
 | Deployer | `7otn8Pmbwys4gEAX5SwAFc9p695SJ9vDJyt2Biw9BDXA` |
+| StoreConfig PDA | `9k2Q1pJyDJM5iAQQZpKEn9qWfu9g9BYF2Ypmzoeg6NXn` |
+| TestBadge Item PDA | `FbxncLidGgUgzBzK5SwdcsFhuDFCUW2Q2UwnS8hm1wGn` |
 
 ## Phase History
 
 | Phase | Name | Status | Completed |
 |-------|------|--------|-----------|
 | 1 | Foundation | Complete | 2026-02-19 |
-| 2 | Program Core | In Progress | — |
+| 2 | Program Core | Complete | 2026-03-03 |
 
 ## Key Decisions
 
@@ -42,6 +44,8 @@ See: .planning/PROJECT.md (updated 2026-02-18)
 - Item PDA re-derived in Purchase context using seeds = [b"item", item.name.as_bytes()] (blocks fake StoreItem accounts)
 - Stock decremented before CPI burn — safe because Solana rolls back on CPI failure
 - blake3 pinned to 1.5.5 to resolve SBF toolchain incompatibility with edition2024
+- Smoke test runner uses tsc+mocha pipeline (not ts-mocha directly) for Node 24 ESM/CJS compatibility
+- IDL JSON imported via require() in test files — import assertion syntax unsupported in Node 24
 
 ## Notes
 
