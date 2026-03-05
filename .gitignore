@@ -7,3 +7,9 @@ test-ledger
 .yarn
 .env
 wallets/
+id.json
+*.keypair
+secretKey
+mnemonic
+.env.local
+.env.example
