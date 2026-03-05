@@ -51,7 +51,7 @@ const testWalletKeypair = loadKeypair(
 
 function deriveStoreConfigPDA(): [PublicKey, number] {
   return PublicKey.findProgramAddressSync(
-    [Buffer.from("store_config")],
+    [Buffer.from("store_config_v2")],
     PROGRAM_ID
   );
 }

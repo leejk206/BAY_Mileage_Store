@@ -4,11 +4,12 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useAnchorProgram } from "../../lib/anchorClient";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { env } from "../../lib/env";
-import { PublicKey } from "@solana/web3.js";
+import { PublicKey, SystemProgram } from "@solana/web3.js";
 import { BN } from "@coral-xyz/anchor";
 import { GlassCard } from "../../components/ui/GlassCard";
 import { NeonButton } from "../../components/ui/NeonButton";
 import { SectionHeader } from "../../components/ui/SectionHeader";
+import { ADMIN_ADDRESS, checkIsAdmin } from "../../src/constants/auth";
 
 type StoreItem = {
   publicKey: string;
@@ -42,11 +43,17 @@ export default function AdminPage() {
 
   const [addTxSig, setAddTxSig] = useState<string | null>(null);
   const [updateTxSig, setUpdateTxSig] = useState<string | null>(null);
+  const [initTxSig, setInitTxSig] = useState<string | null>(null);
+  const [initializing, setInitializing] = useState(false);
 
-  const storeConfigPda = useMemo(
-    () => new PublicKey(env.NEXT_PUBLIC_STORE_CONFIG_PDA),
-    []
-  );
+  // v2 StoreConfig PDA derived from seeds; no longer read from env
+  const storeConfigPda = useMemo(() => {
+    const [pda] = PublicKey.findProgramAddressSync(
+      [Buffer.from("store_config_v2")],
+      new PublicKey(env.NEXT_PUBLIC_PROGRAM_ID)
+    );
+    return pda;
+  }, []);
 
   useEffect(() => {
     if (!program) return;
@@ -58,11 +65,13 @@ export default function AdminPage() {
         );
         const authority = config.authority.toBase58();
         setStoreAuthority(authority);
-        if (publicKey && publicKey.toBase58() === authority) {
-          setIsAdmin(true);
-        } else {
-          setIsAdmin(false);
-        }
+        const walletAddress = publicKey?.toBase58();
+        const isEnvAdmin = checkIsAdmin(walletAddress);
+        const matchesStoreAuthority =
+          walletAddress !== undefined && walletAddress === authority;
+        // env admin 이면 온체인 authority 와 무관하게 admin 인정,
+        // 아니면 기존대로 온체인 authority 기준
+        setIsAdmin(isEnvAdmin || matchesStoreAuthority);
       } catch (e: any) {
         setError(e?.message ?? "Failed to load store config");
       }
@@ -96,6 +105,30 @@ export default function AdminPage() {
     [items, selectedItemPk]
   );
 
+  const authorityDisplay = useMemo(() => {
+    const envAdmin = ADMIN_ADDRESS || null;
+    const onChain = storeAuthority;
+    const walletAddress = publicKey?.toBase58().trim();
+
+    if (walletAddress && envAdmin && walletAddress === envAdmin) {
+      return { value: walletAddress, source: "(From Environment)" };
+    }
+
+    if (walletAddress && onChain && walletAddress === onChain.trim()) {
+      return { value: walletAddress, source: "(On-chain)" };
+    }
+
+    if (onChain) {
+      return { value: onChain, source: "(On-chain)" };
+    }
+
+    if (envAdmin) {
+      return { value: envAdmin, source: "(From Environment)" };
+    }
+
+    return { value: null as string | null, source: "" };
+  }, [storeAuthority, publicKey]);
+
   const formatAddress = (addr: string | null | undefined) => {
     if (!addr) return "Loading...";
     return `${addr.slice(0, 4)}...${addr.slice(-4)}`;
@@ -109,6 +142,31 @@ export default function AdminPage() {
     // 1 BAY = 1_000_000 raw units
     const raw = Math.round(n * 1_000_000);
     return new BN(raw);
+  }
+
+  async function handleInitializeStore() {
+    if (!program || !publicKey) return;
+
+    try {
+      setError(null);
+      setInitializing(true);
+
+      const tx = await (program as any).methods
+        .initializeStore()
+        .accounts({
+          storeConfig: storeConfigPda,
+          bayMint: new PublicKey(env.NEXT_PUBLIC_BAY_MINT),
+          authority: publicKey,
+          systemProgram: SystemProgram.programId,
+        })
+        .rpc();
+
+      setInitTxSig(tx);
+    } catch (e: any) {
+      setError(e?.message ?? "Failed to initialize store");
+    } finally {
+      setInitializing(false);
+    }
   }
 
   async function handleAddItem(e: FormEvent) {
@@ -227,8 +285,13 @@ export default function AdminPage() {
               Authority
             </span>
             <span className="font-mono">
-              {formatAddress(storeAuthority)}
+              {formatAddress(authorityDisplay.value)}
             </span>
+            {authorityDisplay.source && (
+              <span className="ml-1 text-[0.7rem] text-gray-400">
+                {authorityDisplay.source}
+              </span>
+            )}
           </div>
         }
       />
@@ -241,13 +304,31 @@ export default function AdminPage() {
             <p className="text-sm text-gray-300">
               <span className="font-medium">StoreConfig PDA:</span>{" "}
               <span className="font-mono text-xs">
-                {env.NEXT_PUBLIC_STORE_CONFIG_PDA}
+                {storeConfigPda.toBase58()}
               </span>
             </p>
             <p className="mt-1 text-sm text-gray-400">
               Use this console to add or update catalog items for the event
               store.
             </p>
+            {publicKey && (
+              <div className="mt-2 flex items-center gap-2 text-[0.8rem] text-gray-400">
+                <NeonButton
+                  type="button"
+                  disabled={initializing}
+                  onClick={handleInitializeStore}
+                >
+                  {initializing
+                    ? "Initializing..."
+                    : "Initialize StoreConfig with this wallet"}
+                </NeonButton>
+              </div>
+            )}
+            {initTxSig && (
+              <p className="mt-1 text-[0.75rem] text-emerald-300 break-all">
+                Init tx: {initTxSig}
+              </p>
+            )}
           </div>
           <div className="text-sm text-right sm:text-left">
             {publicKey ? (

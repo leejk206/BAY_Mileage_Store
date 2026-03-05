@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ReactNode, useState } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import { GlassCard } from "./ui/GlassCard";
 
@@ -13,6 +13,11 @@ const NAV_ITEMS = [
 
 export function AppLayout({ children }: { children: ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   return (
     <div>
@@ -34,7 +39,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
           <div className="header-network">
             <span className="network-pill">Devnet</span>
           </div>
-          <WalletMultiButton />
+          {mounted && <WalletMultiButton />}
           <button
             className="mobile-menu-button"
             aria-label="Toggle navigation"

@@ -123,7 +123,9 @@ pub struct InitializeStore<'info> {
         init,
         payer = authority,
         space = 8 + StoreConfig::INIT_SPACE,
-        seeds = [b"store_config"],
+        // v2: use a new seed so we can create a fresh StoreConfig
+        // without conflicting with any existing store_config PDA.
+        seeds = [b"store_config_v2"],
         bump,
     )]
     pub store_config: Account<'info, StoreConfig>,
@@ -149,7 +151,7 @@ pub struct AddItem<'info> {
     pub item: Account<'info, StoreItem>,
 
     #[account(
-        seeds = [b"store_config"],
+        seeds = [b"store_config_v2"],
         bump = store_config.bump,
         has_one = authority,
     )]
@@ -180,7 +182,7 @@ pub struct Purchase<'info> {
     pub bay_mint: Account<'info, Mint>,
 
     #[account(
-        seeds = [b"store_config"],
+        seeds = [b"store_config_v2"],
         bump = store_config.bump,
     )]
     pub store_config: Account<'info, StoreConfig>,
