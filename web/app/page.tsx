@@ -4,12 +4,17 @@ import { useEffect, useState } from "react";
 import { useAnchorProgram } from "../lib/anchorClient";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { env } from "../lib/env";
-import { PublicKey } from "@solana/web3.js";
+import { LAMPORTS_PER_SOL, PublicKey } from "@solana/web3.js";
 import {
   ASSOCIATED_TOKEN_PROGRAM_ID,
   TOKEN_PROGRAM_ID,
   getAssociatedTokenAddress,
 } from "@solana/spl-token";
+import { GlassCard } from "../components/ui/GlassCard";
+import { NeonButton } from "../components/ui/NeonButton";
+import { Badge } from "../components/ui/Badge";
+import { StatPill } from "../components/ui/StatPill";
+import { SectionHeader } from "../components/ui/SectionHeader";
 
 type StoreItem = {
   publicKey: string;
@@ -25,6 +30,7 @@ export default function CatalogPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [bayBalance, setBayBalance] = useState<string | null>(null);
+  const [solBalance, setSolBalance] = useState<string | null>(null);
   const [buying, setBuying] = useState<string | null>(null);
   const [lastTx, setLastTx] = useState<string | null>(null);
 
@@ -62,6 +68,7 @@ export default function CatalogPage() {
   useEffect(() => {
     if (!publicKey) {
       setBayBalance(null);
+      setSolBalance(null);
       return;
     }
     (async () => {
@@ -76,8 +83,14 @@ export default function CatalogPage() {
         const info = await connection.getTokenAccountBalance(ata);
         setBayBalance(info.value.uiAmountString ?? info.value.amount);
       } catch {
-        // If no ATA or balance, treat as 0 for MVP
         setBayBalance("0");
+      }
+
+      try {
+        const lamports = await connection.getBalance(publicKey);
+        setSolBalance((lamports / LAMPORTS_PER_SOL).toFixed(3));
+      } catch {
+        setSolBalance(null);
       }
     })();
   }, [connection, publicKey, bayMint]);
@@ -165,69 +178,145 @@ export default function CatalogPage() {
     }
   }
 
+  function shortPda(pda: string) {
+    if (pda.length <= 10) return pda;
+    return `${pda.slice(0, 4)}...${pda.slice(-4)}`;
+  }
+
+  async function copyToClipboard(text: string) {
+    try {
+      await navigator.clipboard?.writeText(text);
+    } catch {
+      // noop for MVP
+    }
+  }
+
   return (
     <main className="container">
-      <h1>BAY Mileage Store</h1>
-      <p className="subtitle">On-chain catalog (devnet)</p>
+      <GlassCard className="mb-6 glass-hover">
+        <SectionHeader
+          title="Mileage Shop"
+          subtitle="Burn BAY to redeem items on devnet"
+          rightSlot={
+            publicKey ? (
+              <div className="flex flex-col gap-2 items-end">
+                <div className="flex flex-wrap gap-2 justify-end">
+                  <StatPill
+                    label="BAY"
+                    value={
+                      bayBalance !== null ? `${bayBalance} BAY` : "Loading..."
+                    }
+                  />
+                  <StatPill
+                    label="SOL"
+                    value={
+                      solBalance !== null ? `${solBalance} SOL` : "Loading..."
+                    }
+                  />
+                </div>
+                <div className="flex items-center gap-2 text-[0.8rem] text-gray-400">
+                  <span>{shortPda(env.NEXT_PUBLIC_STORE_CONFIG_PDA)}</span>
+                  <NeonButton
+                    variant="ghost"
+                    className="px-2 py-1 text-[0.8rem]"
+                    type="button"
+                    onClick={() =>
+                      copyToClipboard(env.NEXT_PUBLIC_STORE_CONFIG_PDA)
+                    }
+                  >
+                    Copy
+                  </NeonButton>
+                </div>
+              </div>
+            ) : (
+              <span className="muted">Connect wallet to view balances</span>
+            )
+          }
+        />
+      </GlassCard>
 
-      {publicKey && (
-        <p>
-          Your BAY balance:{" "}
-          {bayBalance !== null ? `${bayBalance} BAY` : "loading..."}
-        </p>
-      )}
-      {!publicKey && (
-        <p className="muted">
-          Connect your wallet to see your BAY balance and purchase items.
-        </p>
-      )}
-
-      {loading && <p>Loading catalog...</p>}
+      {loading && <p className="muted">Loading catalog...</p>}
       {error && <p className="error">{error}</p>}
 
       {!loading && !error && items.length === 0 && (
-        <p>No items found. Ask the admin to add some.</p>
+        <p className="muted">No items found. Ask the admin to add some.</p>
       )}
 
       {lastTx && (
-        <p>
-          Last purchase tx:{" "}
-          <a
-            href={`https://explorer.solana.com/tx/${lastTx}?cluster=devnet`}
-            target="_blank"
-            rel="noreferrer"
-          >
-            View on Solana Explorer
-          </a>
-        </p>
+          <GlassCard className="mb-4 glass-hover">
+          <div className="flex flex-col gap-1 text-[0.8rem] text-gray-300">
+            <span className="muted">Last purchase transaction</span>
+            <div className="flex flex-wrap items-center gap-2">
+              <a
+                href={`https://explorer.solana.com/tx/${lastTx}?cluster=devnet`}
+                target="_blank"
+                rel="noreferrer"
+                className="underline"
+              >
+                View on Solana Explorer
+              </a>
+              <NeonButton
+                variant="ghost"
+                className="px-2 py-1 text-[0.8rem]"
+                type="button"
+                onClick={() => copyToClipboard(lastTx)}
+              >
+                Copy tx
+              </NeonButton>
+            </div>
+          </div>
+        </GlassCard>
       )}
 
-      <div className="card-grid">
+      <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3 mt-6">
         {items.map((item) => (
-          <div key={item.publicKey} className="card">
-            <h2>{item.name}</h2>
-            <p>Price: {item.price}</p>
-            <p>
-              Stock:{" "}
-              {item.stock > 0 ? (
-                <span>{item.stock} available</span>
-              ) : (
-                <span className="pill pill-out">Out of stock</span>
-              )}
-            </p>
-            <button
-              disabled={!publicKey || item.stock === 0 || buying === item.publicKey}
-              onClick={() => handleBuy(item)}
-            >
-              {item.stock === 0
-                ? "Sold out"
-                : !publicKey
-                ? "Connect wallet"
-                : buying === item.publicKey
-                ? "Buying..."
-                : "Buy"}
-            </button>
-          </div>
+          <GlassCard key={item.publicKey} className="modern-card glass-hover">
+            <div className="flex items-start justify-between">
+              <div>
+                <h2 className="m-0 text-sm font-semibold hover:text-purple-300 transition-colors">
+                  {item.name}
+                </h2>
+                <p className="muted mt-1 text-[0.8rem]">
+                  Redeemable item · {shortPda(item.publicKey)}
+                </p>
+              </div>
+              <Badge tone={item.stock > 0 ? "default" : "danger"}>
+                {item.stock > 0 ? "Available" : "Sold out"}
+              </Badge>
+            </div>
+
+            <div className="mt-3 flex flex-wrap gap-2">
+              <span
+                className="inline-flex items-center rounded-[8px] px-2 py-0.5 text-[0.8rem] text-slate-100 shadow-sm"
+                style={{
+                  backgroundImage:
+                    "linear-gradient(145deg, rgba(15,17,23,0.95), rgba(15,23,42,0.9))",
+                }}
+              >
+                {(item.price / 1_000_000).toString()} BAY
+              </span>
+              <span className="inline-flex items-center rounded-[8px] border border-white/15 bg-black/30 px-2 py-0.5 text-[0.8rem] text-gray-200">
+                Stock: {item.stock}
+              </span>
+            </div>
+
+            <div className="mt-4">
+              <NeonButton
+                disabled={
+                  !publicKey || item.stock === 0 || buying === item.publicKey
+                }
+                onClick={() => handleBuy(item)}
+              >
+                {item.stock === 0
+                  ? "Sold out"
+                  : !publicKey
+                  ? "Connect wallet"
+                  : buying === item.publicKey
+                  ? "Buying..."
+                  : "Buy"}
+              </NeonButton>
+            </div>
+          </GlassCard>
         ))}
       </div>
     </main>
