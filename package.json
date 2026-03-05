@@ -4,7 +4,8 @@
   "description": "BAY Mileage Store Anchor workspace",
   "scripts": {
     "build:tests": "tsc -p tsconfig.json --outDir dist --module commonjs",
-    "test": "yarn run build:tests && mocha --timeout 1000000 dist/smoke.js"
+    "test": "yarn run build:tests && mocha --timeout 1000000 dist/tests/smoke.js",
+    "airdrop:bay": "ts-node scripts/airdrop-bay.ts"
   },
   "dependencies": {
     "@coral-xyz/anchor": "^0.32.0",
@@ -20,6 +21,7 @@
     "chai": "^4.3.10",
     "mocha": "^10.3.0",
     "ts-mocha": "^10.0.0",
+    "ts-node": "^10.9.2",
     "typescript": "^5.3.3"
   }
 }

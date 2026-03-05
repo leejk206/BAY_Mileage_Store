@@ -7,5 +7,7 @@
     "esModuleInterop": true,
     "strict": true,
     "resolveJsonModule": true
-  }
+  },
+  "include": ["tests/**/*.ts", "target/types/**/*.ts"],
+  "exclude": ["node_modules", "web", "scripts"]
 }

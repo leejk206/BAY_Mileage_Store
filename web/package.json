@@ -1,0 +1,32 @@
+{
+  "name": "bay-mileage-store-web",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@coral-xyz/anchor": "^0.32.0",
+    "@solana/spl-token": "^0.4.9",
+    "@solana/wallet-adapter-react": "^0.15.35",
+    "@solana/wallet-adapter-react-ui": "^0.9.35",
+    "@solana/wallet-adapter-phantom": "^0.9.27",
+    "@solana/wallet-adapter-solflare": "^0.6.26",
+    "@solana/web3.js": "^1.98.0",
+    "next": "14.1.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/react": "^18.2.47",
+    "@types/react-dom": "^18.2.18",
+    "eslint": "^8.56.0",
+    "eslint-config-next": "14.1.0",
+    "typescript": "^5.3.3"
+  }
+}
+

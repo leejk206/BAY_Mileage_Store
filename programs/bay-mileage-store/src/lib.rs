@@ -53,12 +53,23 @@ pub mod bay_mileage_store {
         );
         token::burn(cpi_ctx, item_price)?;
 
+        let counter = &mut ctx.accounts.receipt_counter;
+        counter.buyer = ctx.accounts.buyer.key();
+        counter.item = ctx.accounts.item.key();
+        counter.bump = ctx.bumps.receipt_counter;
+        let purchase_index = counter.next_index;
+
         let receipt = &mut ctx.accounts.receipt;
         receipt.buyer = ctx.accounts.buyer.key();
         receipt.item = ctx.accounts.item.key();
         receipt.amount_burned = item_price;
         receipt.timestamp = Clock::get()?.unix_timestamp;
+        receipt.purchase_index = purchase_index;
         receipt.bump = ctx.bumps.receipt;
+
+        counter.next_index = purchase_index
+            .checked_add(1)
+            .ok_or(ErrorCode::AccountDidNotSerialize)?;
 
         Ok(())
     }
@@ -91,7 +102,17 @@ pub struct PurchaseReceipt {
     pub item: Pubkey,        // 32
     pub amount_burned: u64,  // 8 -- raw BAY units burned
     pub timestamp: i64,      // 8 -- Clock::get()?.unix_timestamp (i64, not u64)
+    pub purchase_index: u64, // 8 -- monotonically increasing per (buyer, item)
     pub bump: u8,            // 1
+}
+
+#[account]
+#[derive(InitSpace)]
+pub struct ReceiptCounter {
+    pub buyer: Pubkey,    // 32
+    pub item: Pubkey,     // 32
+    pub next_index: u64,  // 8 -- next purchase index for (buyer, item)
+    pub bump: u8,         // 1
 }
 
 // -- Instruction Contexts ----------------------------------------------------
@@ -172,10 +193,24 @@ pub struct Purchase<'info> {
     pub item: Account<'info, StoreItem>,
 
     #[account(
+        init_if_needed,
+        payer = buyer,
+        space = 8 + ReceiptCounter::INIT_SPACE,
+        seeds = [b"receipt_counter", buyer.key().as_ref(), item.key().as_ref()],
+        bump,
+    )]
+    pub receipt_counter: Account<'info, ReceiptCounter>,
+
+    #[account(
         init,
         payer = buyer,
         space = 8 + PurchaseReceipt::INIT_SPACE,
-        seeds = [b"receipt", buyer.key().as_ref(), item.key().as_ref()],
+        seeds = [
+            b"receipt",
+            buyer.key().as_ref(),
+            item.key().as_ref(),
+            &receipt_counter.next_index.to_le_bytes()
+        ],
         bump,
     )]
     pub receipt: Account<'info, PurchaseReceipt>,
