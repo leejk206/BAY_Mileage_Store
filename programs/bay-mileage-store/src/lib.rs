@@ -4,7 +4,7 @@ use anchor_spl::{
     token::{self, Burn, Mint, Token, TokenAccount},
 };
 
-declare_id!("3HgyGbc6oQvGMiWxMFCTfk4br1K4Zv6Jy2oR3chCcFag");
+declare_id!("8vLkdQq3Ya6ZRx4ApVLsBC6s1aLbS5dkEH29fJa8oMuW");
 
 #[program]
 pub mod bay_mileage_store {
@@ -21,15 +21,51 @@ pub mod bay_mileage_store {
     pub fn add_item(
         ctx: Context<AddItem>,
         name: String,
+        display_name: String,
         price: u64,
         stock: u64,
+        image_url: String,
     ) -> Result<()> {
+        // name 은 PDA seed 용 ID 이므로 32바이트 이하, ASCII 로 제한
         require!(name.len() <= 32, BayError::NameTooLong);
+        // 간단한 길이 체크 (표시용 이름은 64자 정도 허용)
+        require!(display_name.len() <= 64, BayError::NameTooLong);
+        // 이미지 URL 은 1024자까지 허용
+        require!(image_url.len() <= 1024, BayError::NameTooLong);
+
         let item = &mut ctx.accounts.item;
         item.name = name;
+        item.display_name = display_name;
         item.price = price;
         item.stock = stock;
+        item.image_url = image_url;
         item.bump = ctx.bumps.item;
+        Ok(())
+    }
+
+    pub fn update_item(
+        ctx: Context<UpdateItem>,
+        display_name: String,
+        price: u64,
+        stock: u64,
+        image_url: String,
+    ) -> Result<()> {
+        require!(display_name.len() <= 64, BayError::NameTooLong);
+        require!(image_url.len() <= 1024, BayError::NameTooLong);
+        let item = &mut ctx.accounts.item;
+        item.display_name = display_name;
+        item.price = price;
+        item.stock = stock;
+        item.image_url = image_url;
+        Ok(())
+    }
+
+    pub fn update_config(
+        ctx: Context<UpdateConfig>,
+        new_bay_mint: Pubkey,
+    ) -> Result<()> {
+        let config = &mut ctx.accounts.store_config;
+        config.bay_mint = new_bay_mint;
         Ok(())
     }
 
@@ -89,10 +125,14 @@ pub struct StoreConfig {
 #[derive(InitSpace)]
 pub struct StoreItem {
     #[max_len(32)]
-    pub name: String,  // 4 + 32 = 36
-    pub price: u64,    // 8 -- raw BAY units (1 BAY = 1_000_000 units)
-    pub stock: u64,    // 8
-    pub bump: u8,      // 1
+    pub name: String,          // 4 + 32 = 36 (internal ID / PDA seed)
+    #[max_len(64)]
+    pub display_name: String,  // 4 + 64 = 68 (user-facing name)
+    pub price: u64,            // 8 -- raw BAY units (1 BAY = 1_000_000 units)
+    pub stock: u64,            // 8
+    #[max_len(1024)]
+    pub image_url: String,     // 4 + 1024 = 1028 (URL 문자열)
+    pub bump: u8,              // 1
 }
 
 #[account]
@@ -220,6 +260,40 @@ pub struct Purchase<'info> {
     pub token_program: Program<'info, Token>,
     pub associated_token_program: Program<'info, AssociatedToken>,
     pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct UpdateItem<'info> {
+    #[account(
+        mut,
+        seeds = [b"item", item.name.as_bytes()],
+        bump = item.bump,
+    )]
+    pub item: Account<'info, StoreItem>,
+
+    #[account(
+        seeds = [b"store_config_v2"],
+        bump = store_config.bump,
+        has_one = authority,
+    )]
+    pub store_config: Account<'info, StoreConfig>,
+
+    #[account(mut)]
+    pub authority: Signer<'info>,
+}
+
+#[derive(Accounts)]
+pub struct UpdateConfig<'info> {
+    #[account(
+        mut,
+        seeds = [b"store_config_v2"],
+        bump = store_config.bump,
+        has_one = authority,
+    )]
+    pub store_config: Account<'info, StoreConfig>,
+
+    #[account(mut)]
+    pub authority: Signer<'info>,
 }
 
 // -- Custom Errors -----------------------------------------------------------

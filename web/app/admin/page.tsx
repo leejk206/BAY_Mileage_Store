@@ -10,12 +10,15 @@ import { GlassCard } from "../../components/ui/GlassCard";
 import { NeonButton } from "../../components/ui/NeonButton";
 import { SectionHeader } from "../../components/ui/SectionHeader";
 import { ADMIN_ADDRESS, checkIsAdmin } from "../../src/constants/auth";
+import { BAY_DECIMAL_FACTOR } from "../constants";
 
 type StoreItem = {
   publicKey: string;
-  name: string;
+  name: string; // internal ID / PDA seed
+  displayName: string; // user-facing label
   price: number;
   stock: number;
+  imageUrl: string;
 };
 
 export default function AdminPage() {
@@ -31,14 +34,18 @@ export default function AdminPage() {
 
   // Add Item form
   const [addName, setAddName] = useState("");
+  const [addDisplayName, setAddDisplayName] = useState("");
   const [addPriceBay, setAddPriceBay] = useState("");
   const [addStock, setAddStock] = useState("");
+  const [addImageUrl, setAddImageUrl] = useState("");
   const [adding, setAdding] = useState(false);
 
   // Update Item form
   const [selectedItemPk, setSelectedItemPk] = useState("");
+  const [updateDisplayName, setUpdateDisplayName] = useState("");
   const [updatePriceBay, setUpdatePriceBay] = useState("");
   const [updateStock, setUpdateStock] = useState("");
+  const [updateImageUrl, setUpdateImageUrl] = useState("");
   const [updating, setUpdating] = useState(false);
 
   const [addTxSig, setAddTxSig] = useState<string | null>(null);
@@ -84,14 +91,31 @@ export default function AdminPage() {
     (async () => {
       try {
         setItemsLoading(true);
-        const accounts = await (program as any).account.storeItem.all();
-        const mapped: StoreItem[] = accounts.map((acc: any) => ({
-          publicKey: acc.publicKey.toBase58(),
-          name: acc.account.name,
-          price: Number(acc.account.price),
-          stock: Number(acc.account.stock),
-        }));
-        setItems(mapped);
+        const conn = (program as any).provider?.connection;
+        const rawAccounts = await conn.getProgramAccounts(program.programId);
+        const coder = (program as any).coder;
+
+        const decoded: StoreItem[] = [];
+        for (const acc of rawAccounts) {
+          try {
+            const itemAccount: any = coder.accounts.decode(
+              "storeItem",
+              acc.account.data
+            );
+            decoded.push({
+              publicKey: acc.pubkey.toBase58(),
+              name: itemAccount.name as string,
+              displayName: itemAccount.displayName as string,
+              price: Number(itemAccount.price),
+              stock: Number(itemAccount.stock),
+              imageUrl: itemAccount.imageUrl as string,
+            });
+          } catch {
+            // Not a StoreItem or old layout; ignore
+          }
+        }
+
+        setItems(decoded);
       } catch (e: any) {
         setError(e?.message ?? "Failed to load items");
       } finally {
@@ -139,9 +163,34 @@ export default function AdminPage() {
     if (!Number.isFinite(n) || n < 0) {
       throw new Error("Invalid BAY amount");
     }
-    // 1 BAY = 1_000_000 raw units
-    const raw = Math.round(n * 1_000_000);
+    const raw = Math.round(n * BAY_DECIMAL_FACTOR);
     return new BN(raw);
+  }
+
+  const MAX_IMAGE_URL_LENGTH = 1024;
+  const MAX_NAME_ID_LENGTH = 32;
+  const MAX_DISPLAY_NAME_LENGTH = 64;
+
+  function validateNameId(id: string): string | null {
+    if (!id) return "Name (ID) is required.";
+    if (id.length > MAX_NAME_ID_LENGTH) {
+      return `Name (ID) must be ≤ ${MAX_NAME_ID_LENGTH} characters.`;
+    }
+    if (!/^[A-Za-z0-9_-]+$/.test(id)) {
+      return "Name (ID) must use only A–Z, a–z, 0–9, -, _ characters.";
+    }
+    return null;
+  }
+
+  function validateImageUrl(url: string): string | null {
+    if (!url) return null; // 이미지 없이도 허용
+    if (url.length > MAX_IMAGE_URL_LENGTH)
+      return `Image URL must be ${MAX_IMAGE_URL_LENGTH} characters or fewer.`;
+    // 아주 간단한 형식 체크만 수행 (http/https로 시작)
+    if (!/^https?:\/\/.+/i.test(url)) {
+      return "Image URL must start with http:// or https://";
+    }
+    return null;
   }
 
   async function handleInitializeStore() {
@@ -172,8 +221,20 @@ export default function AdminPage() {
   async function handleAddItem(e: FormEvent) {
     e.preventDefault();
     if (!program || !publicKey) return;
-    if (!addName || addName.length > 32) {
-      setError("Name is required and must be ≤ 32 characters.");
+    const nameError = validateNameId(addName);
+    if (nameError) {
+      setError(nameError);
+      return;
+    }
+    if (!addDisplayName || addDisplayName.length > MAX_DISPLAY_NAME_LENGTH) {
+      setError(
+        `Display name is required and must be ≤ ${MAX_DISPLAY_NAME_LENGTH} characters.`
+      );
+      return;
+    }
+    const imageError = validateImageUrl(addImageUrl);
+    if (imageError) {
+      setError(imageError);
       return;
     }
 
@@ -193,7 +254,13 @@ export default function AdminPage() {
       );
 
       await (program as any).methods
-        .addItem(addName, priceRaw, new BN(stockNum))
+        .addItem(
+          addName,
+          addDisplayName,
+          priceRaw,
+          new BN(stockNum),
+          addImageUrl
+        )
         .accounts({
           item: itemPda,
           storeConfig: storeConfigPda,
@@ -205,18 +272,35 @@ export default function AdminPage() {
         });
 
       setAddName("");
+      setAddDisplayName("");
       setAddPriceBay("");
       setAddStock("");
+      setAddImageUrl("");
       // keep last tx sig visible
 
-      const accounts = await (program as any).account.storeItem.all();
-      const mapped: StoreItem[] = accounts.map((acc: any) => ({
-        publicKey: acc.publicKey.toBase58(),
-        name: acc.account.name,
-        price: Number(acc.account.price),
-        stock: Number(acc.account.stock),
-      }));
-      setItems(mapped);
+      const conn = (program as any).provider?.connection;
+      const rawAccounts = await conn.getProgramAccounts(program.programId);
+      const coder = (program as any).coder;
+      const decoded: StoreItem[] = [];
+      for (const acc of rawAccounts) {
+        try {
+          const itemAccount: any = coder.accounts.decode(
+            "storeItem",
+            acc.account.data
+          );
+          decoded.push({
+            publicKey: acc.pubkey.toBase58(),
+            name: itemAccount.name as string,
+            displayName: itemAccount.displayName as string,
+            price: Number(itemAccount.price),
+            stock: Number(itemAccount.stock),
+            imageUrl: itemAccount.imageUrl as string,
+          });
+        } catch {
+          // ignore non-StoreItem / old layout
+        }
+      }
+      setItems(decoded);
     } catch (e: any) {
       setError(e?.message ?? "Failed to add item");
     } finally {
@@ -241,11 +325,26 @@ export default function AdminPage() {
       if (!Number.isFinite(stockNum) || stockNum < 0) {
         throw new Error("Invalid stock value");
       }
+      const imageError = validateImageUrl(updateImageUrl);
+      if (imageError) {
+        throw new Error(imageError);
+      }
+
+      const current = selectedItem;
+      const nextDisplay =
+        updateDisplayName.trim().length > 0
+          ? updateDisplayName.trim()
+          : current?.displayName || "";
+      if (!nextDisplay || nextDisplay.length > MAX_DISPLAY_NAME_LENGTH) {
+        throw new Error(
+          `Display name must be non-empty and ≤ ${MAX_DISPLAY_NAME_LENGTH} characters.`
+        );
+      }
 
       const itemPubkey = new PublicKey(selectedItemPk);
 
       await (program as any).methods
-        .updateItem(priceRaw, new BN(stockNum))
+        .updateItem(nextDisplay, priceRaw, new BN(stockNum), updateImageUrl)
         .accounts({
           item: itemPubkey,
           storeConfig: storeConfigPda,
@@ -256,17 +355,34 @@ export default function AdminPage() {
           setUpdateTxSig(sig);
         });
 
+      setUpdateDisplayName("");
       setUpdatePriceBay("");
       setUpdateStock("");
+      setUpdateImageUrl("");
 
-      const accounts = await (program as any).account.storeItem.all();
-      const mapped: StoreItem[] = accounts.map((acc: any) => ({
-        publicKey: acc.publicKey.toBase58(),
-        name: acc.account.name,
-        price: Number(acc.account.price),
-        stock: Number(acc.account.stock),
-      }));
-      setItems(mapped);
+      const conn = (program as any).provider?.connection;
+      const rawAccounts = await conn.getProgramAccounts(program.programId);
+      const coder = (program as any).coder;
+      const decoded: StoreItem[] = [];
+      for (const acc of rawAccounts) {
+        try {
+          const itemAccount: any = coder.accounts.decode(
+            "storeItem",
+            acc.account.data
+          );
+          decoded.push({
+            publicKey: acc.pubkey.toBase58(),
+            name: itemAccount.name as string,
+            displayName: itemAccount.displayName as string,
+            price: Number(itemAccount.price),
+            stock: Number(itemAccount.stock),
+            imageUrl: itemAccount.imageUrl as string,
+          });
+        } catch {
+          // ignore non-StoreItem / old layout
+        }
+      }
+      setItems(decoded);
     } catch (e: any) {
       setError(e?.message ?? "Failed to update item");
     } finally {
@@ -369,6 +485,15 @@ export default function AdminPage() {
 
       {isAdmin && (
         <div className="mt-4 grid gap-6 md:grid-cols-2">
+          <GlassCard className="md:col-span-2 border-yellow-400/40 bg-yellow-500/5 mb-2">
+            <p className="text-[0.8rem] text-yellow-100">
+              토큰 Decimals 가 9로 변경되었습니다. 기존에 등록된 아이템은 이전 단위(예:
+              5&nbsp;→&nbsp;5,000,000)로 저장되어 있을 수 있습니다. 각 아이템을 선택한 뒤{" "}
+              <span className="font-semibold">New price (BAY)</span> 에 올바른 가격(예:
+              5)을 다시 입력하고 <span className="font-semibold">Update Item</span> 을
+              눌러 가격을 재설정해 주세요.
+            </p>
+          </GlassCard>
           <GlassCard>
             <h2 className="text-sm font-semibold text-gray-100">
               Add Item
@@ -379,20 +504,35 @@ export default function AdminPage() {
             <form onSubmit={handleAddItem} className="mt-4 space-y-1.5">
               <div>
                 <label className="block text-[0.8rem] font-medium text-gray-300">
-                  Name (≤ 32)
+                  Name (ID, ≤ {MAX_NAME_ID_LENGTH})
                 </label>
                 <input
                   type="text"
                   value={addName}
-                  maxLength={32}
+                  maxLength={MAX_NAME_ID_LENGTH}
                   onChange={(e) => setAddName(e.target.value)}
                   required
                   className="mt-1 w-full rounded-xl border border-white/20 bg-black/40 px-4 py-3 text-sm text-gray-100 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400"
-                  placeholder="e.g. BAY Hoodie"
+                  placeholder="e.g. BAY_HOODIE"
                 />
                 <p className="mt-1 text-[0.8rem] text-gray-500">
-                  Name is used as the PDA seed and cannot be changed later.
+                  Used as the PDA seed (A–Z, a–z, 0–9, -, _) and cannot be
+                  changed later.
                 </p>
+              </div>
+              <div>
+                <label className="block text-[0.8rem] font-medium text-gray-300">
+                  Display name (≤ {MAX_DISPLAY_NAME_LENGTH})
+                </label>
+                <input
+                  type="text"
+                  value={addDisplayName}
+                  maxLength={MAX_DISPLAY_NAME_LENGTH}
+                  onChange={(e) => setAddDisplayName(e.target.value)}
+                  required
+                  className="mt-1 w-full rounded-xl border border-white/20 bg-black/40 px-4 py-3 text-sm text-gray-100 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400"
+                  placeholder="e.g. 스타벅스 아메리카노 Tall"
+                />
               </div>
               <div>
                 <label className="block text-[0.8rem] font-medium text-gray-300">
@@ -408,6 +548,22 @@ export default function AdminPage() {
                   className="mt-1 w-full rounded-xl border border-white/20 bg-black/40 px-4 py-3 text-sm text-gray-100 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400"
                   placeholder="e.g. 5"
                 />
+              </div>
+              <div>
+                <label className="block text-[0.8rem] font-medium text-gray-300">
+                  Image URL
+                </label>
+                <input
+                  type="url"
+                  value={addImageUrl}
+                  onChange={(e) => setAddImageUrl(e.target.value)}
+                  className="mt-1 w-full rounded-xl border border-white/20 bg-black/40 px-4 py-3 text-sm text-gray-100 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400"
+                  placeholder="https://example.com/image.png"
+                />
+                <p className="mt-1 text-[0.8rem] text-gray-500">
+                  Optional. Supports http(s) image URLs (max{" "}
+                  {MAX_IMAGE_URL_LENGTH} characters).
+                </p>
               </div>
               <div>
                 <label className="block text-[0.8rem] font-medium text-gray-300">
@@ -468,7 +624,8 @@ export default function AdminPage() {
                     <option value="">Choose an item...</option>
                     {items.map((item) => (
                       <option key={item.publicKey} value={item.publicKey}>
-                        {item.name} ({formatAddress(item.publicKey)})
+                        {item.displayName} ({item.name}) (
+                        {formatAddress(item.publicKey)})
                       </option>
                     ))}
                   </select>
@@ -476,14 +633,34 @@ export default function AdminPage() {
                     <p className="mt-1 text-[0.8rem] text-gray-500">
                       Current:{" "}
                       <span className="font-mono">
-                        {(selectedItem.price / 1_000_000).toString()} BAY
+                        {(selectedItem.price / BAY_DECIMAL_FACTOR).toString()} BAY
                       </span>{" "}
                       · Stock{" "}
                       <span className="font-mono">
                         {selectedItem.stock}
                       </span>
+                      <br />
+                      ID: <span className="font-mono">{selectedItem.name}</span>
+                      <br />
+                      Display:{" "}
+                      <span className="font-mono">
+                        {selectedItem.displayName}
+                      </span>
                     </p>
                   )}
+                </div>
+                <div>
+                  <label className="block text-[0.8rem] font-medium text-gray-300">
+                    New display name (optional, ≤ {MAX_DISPLAY_NAME_LENGTH})
+                  </label>
+                  <input
+                    type="text"
+                    value={updateDisplayName}
+                    maxLength={MAX_DISPLAY_NAME_LENGTH}
+                    onChange={(e) => setUpdateDisplayName(e.target.value)}
+                    className="mt-1 w-full rounded-xl border border-white/20 bg-black/40 px-4 py-3 text-sm text-gray-100 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400"
+                    placeholder="Leave blank to keep current display name"
+                  />
                 </div>
                 <div>
                   <label className="block text-[0.8rem] font-medium text-gray-300">
@@ -499,6 +676,26 @@ export default function AdminPage() {
                     className="mt-1 w-full rounded-xl border border-white/20 bg-black/40 px-4 py-3 text-sm text-gray-100 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400"
                     placeholder="e.g. 6"
                   />
+                </div>
+                <div>
+                  <label className="block text-[0.8rem] font-medium text-gray-300">
+                    New image URL
+                  </label>
+                  <input
+                    type="url"
+                    value={updateImageUrl}
+                    onChange={(e) => setUpdateImageUrl(e.target.value)}
+                    className="mt-1 w-full rounded-xl border border-white/20 bg-black/40 px-4 py-3 text-sm text-gray-100 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400"
+                    placeholder="https://example.com/image.png"
+                  />
+                  {selectedItem && selectedItem.imageUrl && (
+                    <p className="mt-1 text-[0.8rem] text-gray-500">
+                      Current image:{" "}
+                      <span className="underline break-all">
+                        {selectedItem.imageUrl}
+                      </span>
+                    </p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-[0.8rem] font-medium text-gray-300">

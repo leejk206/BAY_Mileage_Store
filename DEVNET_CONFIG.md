@@ -6,7 +6,7 @@
 ### Program
 
 - **Program ID**  
-  `3HgyGbc6oQvGMiWxMFCTfk4br1K4Zv6Jy2oR3chCcFag`
+  `8vLkdQq3Ya6ZRx4ApVLsBC6s1aLbS5dkEH29fJa8oMuW`
 
 ### Token (BAY SPL Mint)
 
@@ -16,10 +16,10 @@
 ### Store Configuration
 
 - **StoreConfig PDA**  
-  `9k2Q1pJyDJM5iAQQZpKEn9qWfu9g9BYF2Ypmzoeg6NXn`
+  _Derived from `PROGRAM_ID` and seeds `[b"store_config_v2"]`_
 
 - **Authority Wallet (StoreConfig.authority)**  
-  `7otn8Pmbwys4gEAX5SwAFc9p695SJ9vDJyt2Biw9BDXA`
+  _Set at runtime via `initialize_store` (see admin flow)_
 
 ### RPC Endpoint
 

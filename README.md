@@ -2,9 +2,9 @@ BAY_Mileage_Store
 
 ## Deployment Notes
 
-- **Program ID (devnet)**: `3HgyGbc6oQvGMiWxMFCTfk4br1K4Zv6Jy2oR3chCcFag`
+- **Program ID (devnet)**: `8vLkdQq3Ya6ZRx4ApVLsBC6s1aLbS5dkEH29fJa8oMuW`
 - **BAY MINT (devnet)**: `agYm2drYnvKnGQoXh1iZQ4iWYZPa87qtGe4baTNckdB`
-- **StoreConfig PDA (devnet)**: `9k2Q1pJyDJM5iAQQZpKEn9qWfu9g9BYF2Ypmzoeg6NXn`
+- **StoreConfig PDA (devnet)**: _Derived on-chain from program ID and seeds `[b"store_config_v2"]`_
 
 - **Redeploy to devnet**
   - Ensure `Anchor.toml` has `provider.cluster = "devnet"` and `programs.devnet.bay_mileage_store` matches the `declare_id!` in `lib.rs`.

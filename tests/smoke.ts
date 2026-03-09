@@ -149,7 +149,13 @@ describe("BAY Mileage Store — Smoke Tests", () => {
     }
 
     const tx = await program.methods
-      .addItem("TestBadge", new BN(5_000_000), new BN(10))
+      .addItem(
+        "TestBadge", // internal ID / seed
+        "Test Badge", // display name
+        new BN(5_000_000),
+        new BN(10),
+        "https://example.com/testbadge.png"
+      )
       .accounts({
         item: itemPDA,
         storeConfig: storeConfigPDA,

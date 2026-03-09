@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useAnchorProgram } from "../../lib/anchorClient";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { PublicKey } from "@solana/web3.js";
+import { BAY_DECIMAL_FACTOR } from "../constants";
 import { GlassCard } from "../../components/ui/GlassCard";
 import { SectionHeader } from "../../components/ui/SectionHeader";
 
@@ -11,6 +12,7 @@ type Purchase = {
   publicKey: string;
   itemPubkey: string;
   itemName?: string;
+  itemImageUrl?: string;
   amountBurned: number;
   timestamp: number;
   purchaseIndex?: number;
@@ -57,7 +59,10 @@ export default function MyPurchasesPage() {
           new Set(mapped.map((p) => p.itemPubkey))
         );
 
-        const itemNameMap = new Map<string, string>();
+        const itemMetaMap = new Map<
+          string,
+          { name?: string; imageUrl?: string }
+        >();
         await Promise.all(
           uniqueItemPubkeys.map(async (pkStr) => {
             try {
@@ -65,17 +70,24 @@ export default function MyPurchasesPage() {
               const itemAccount: any = await (program as any).account.storeItem.fetch(
                 pk
               );
-              itemNameMap.set(pkStr, itemAccount.name as string);
+              itemMetaMap.set(pkStr, {
+                name: itemAccount.displayName as string,
+                imageUrl: itemAccount.imageUrl as string,
+              });
             } catch {
               // ignore failures, fallback to pubkey
             }
           })
         );
 
-        const withNames: Purchase[] = mapped.map((p) => ({
-          ...p,
-          itemName: itemNameMap.get(p.itemPubkey),
-        }));
+        const withNames: Purchase[] = mapped.map((p) => {
+          const meta = itemMetaMap.get(p.itemPubkey);
+          return {
+            ...p,
+            itemName: meta?.name,
+            itemImageUrl: meta?.imageUrl,
+          };
+        });
 
         // Sort by timestamp desc, then purchaseIndex asc
         withNames.sort((a, b) => {
@@ -192,19 +204,39 @@ export default function MyPurchasesPage() {
                       className="border-b border-white/5 last:border-0"
                     >
                       <td className="py-2 pr-4">
-                        <div className="flex flex-col">
-                          <span className="text-[0.8rem] font-medium">
-                            {p.itemName ?? p.itemPubkey}
-                          </span>
-                          {p.itemName && (
-                            <span className="text-[0.8rem] text-gray-500">
-                              {p.itemPubkey}
+                        <div className="flex items-center gap-2">
+                          <div className="h-9 w-9 flex-shrink-0 overflow-hidden rounded-md border border-white/10 bg-slate-900">
+                            {p.itemImageUrl ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                src={p.itemImageUrl}
+                                alt={p.itemName ?? "Item image"}
+                                className="h-full w-full object-cover"
+                                onError={(e) => {
+                                  (e.currentTarget as HTMLImageElement).src =
+                                    "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Crect width='100%25' height='100%25' fill='%231f2937'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%239ca3af' font-size='9'%3ENo%3C/text%3E%3C/svg%3E";
+                                }}
+                              />
+                            ) : (
+                              <div className="flex h-full w-full items-center justify-center text-[0.6rem] text-slate-400">
+                                No
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="text-[0.8rem] font-medium">
+                              {p.itemName ?? p.itemPubkey}
                             </span>
-                          )}
+                            {p.itemName && (
+                              <span className="text-[0.8rem] text-gray-500">
+                                {p.itemPubkey}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </td>
                       <td className="py-2 pr-4 text-[0.8rem]">
-                        {(p.amountBurned / 1_000_000).toString()}
+                        {(p.amountBurned / BAY_DECIMAL_FACTOR).toString()}
                       </td>
                       <td className="py-2 pr-4 text-[0.8rem] text-gray-400">
                         {new Date(p.timestamp * 1000).toLocaleString()}

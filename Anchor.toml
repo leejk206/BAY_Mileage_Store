@@ -9,7 +9,7 @@ skip-lint = false
 bay_mileage_store = "3HgyGbc6oQvGMiWxMFCTfk4br1K4Zv6Jy2oR3chCcFag"
 
 [programs.devnet]
-bay_mileage_store = "3HgyGbc6oQvGMiWxMFCTfk4br1K4Zv6Jy2oR3chCcFag"
+bay_mileage_store = "8vLkdQq3Ya6ZRx4ApVLsBC6s1aLbS5dkEH29fJa8oMuW"
 
 [registry]
 url = "https://api.apr.dev"

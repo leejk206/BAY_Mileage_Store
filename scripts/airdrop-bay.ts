@@ -19,8 +19,8 @@ import * as path from "path";
 // Configuration
 // ---------------------------------------------------------------------------
 
-// 1 point = RAW_PER_POINT raw BAY units (1 BAY = 1_000_000 raw)
-const RAW_PER_POINT = 1_000_000n;
+// 1 point = RAW_PER_POINT raw BAY units (1 BAY = 1_000_000_000 raw, decimals = 9)
+const RAW_PER_POINT = 1_000_000_000n;
 
 // Default RPC endpoint (falls back to devnet)
 const DEFAULT_RPC_URL = "https://api.devnet.solana.com";
