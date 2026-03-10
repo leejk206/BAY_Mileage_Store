@@ -82,8 +82,12 @@ export default function CatalogPage() {
 
         setItems(decoded);
       } catch (e: any) {
-        // For MVP, just show a simple message
-        setError(e?.message ?? "Failed to load catalog");
+        const msg: string = e?.message ?? "";
+        if (msg.includes("429") || msg.includes("Too Many Requests")) {
+          setError("네트워크 요청이 많습니다. 잠시 후 다시 시도해주세요.");
+        } else {
+          setError(msg || "Failed to load catalog");
+        }
       } finally {
         setLoading(false);
       }
@@ -237,7 +241,9 @@ export default function CatalogPage() {
       setBayBalance(balanceInfo.value.uiAmountString ?? balanceInfo.value.amount);
     } catch (e: any) {
       const msg: string = e?.message ?? "";
-      if (
+      if (msg.includes("429") || msg.includes("Too Many Requests")) {
+        setError("네트워크 요청이 많습니다. 잠시 후 다시 시도해주세요");
+      } else if (
         msg.includes("InsufficientFunds") ||
         msg.includes("BAY token balance is insufficient")
       ) {

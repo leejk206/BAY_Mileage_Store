@@ -1,6 +1,11 @@
 export const env = {
   NEXT_PUBLIC_SOLANA_CLUSTER:
     process.env.NEXT_PUBLIC_SOLANA_CLUSTER ?? "devnet",
+  // Prefer explicit SOLANA RPC URL; fallback to legacy NEXT_PUBLIC_RPC_URL; then default devnet.
+  NEXT_PUBLIC_SOLANA_RPC_URL:
+    process.env.NEXT_PUBLIC_SOLANA_RPC_URL ??
+    process.env.NEXT_PUBLIC_RPC_URL ??
+    "https://api.devnet.solana.com",
   NEXT_PUBLIC_RPC_URL:
     process.env.NEXT_PUBLIC_RPC_URL ?? "https://api.devnet.solana.com",
   // 기본값은 DEVNET_CONFIG.md 에 기록된 devnet 주소와 동일하게 맞춰 둡니다.

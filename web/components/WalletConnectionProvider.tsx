@@ -10,7 +10,7 @@ import { env } from "../lib/env";
 require("@solana/wallet-adapter-react-ui/styles.css");
 
 export function WalletConnectionProvider({ children }: { children: ReactNode }) {
-  const endpoint = env.NEXT_PUBLIC_RPC_URL;
+  const endpoint = env.NEXT_PUBLIC_SOLANA_RPC_URL;
 
   const wallets = useMemo(
     () => [new PhantomWalletAdapter(), new SolflareWalletAdapter()],

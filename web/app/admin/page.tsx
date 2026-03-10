@@ -80,7 +80,12 @@ export default function AdminPage() {
         // 아니면 기존대로 온체인 authority 기준
         setIsAdmin(isEnvAdmin || matchesStoreAuthority);
       } catch (e: any) {
-        setError(e?.message ?? "Failed to load store config");
+        const msg: string = e?.message ?? "";
+        if (msg.includes("429") || msg.includes("Too Many Requests")) {
+          setError("네트워크 요청이 많습니다. 잠시 후 다시 시도해주세요");
+        } else {
+          setError(msg || "Failed to load store config");
+        }
       }
     })();
   }, [program, publicKey, storeConfigPda]);
@@ -117,7 +122,12 @@ export default function AdminPage() {
 
         setItems(decoded);
       } catch (e: any) {
-        setError(e?.message ?? "Failed to load items");
+        const msg: string = e?.message ?? "";
+        if (msg.includes("429") || msg.includes("Too Many Requests")) {
+          setError("네트워크 요청이 많습니다. 잠시 후 다시 시도해주세요");
+        } else {
+          setError(msg || "Failed to load items");
+        }
       } finally {
         setItemsLoading(false);
       }
@@ -212,7 +222,12 @@ export default function AdminPage() {
 
       setInitTxSig(tx);
     } catch (e: any) {
-      setError(e?.message ?? "Failed to initialize store");
+      const msg: string = e?.message ?? "";
+      if (msg.includes("429") || msg.includes("Too Many Requests")) {
+        setError("네트워크 요청이 많습니다. 잠시 후 다시 시도해주세요");
+      } else {
+        setError(msg || "Failed to initialize store");
+      }
     } finally {
       setInitializing(false);
     }
@@ -302,7 +317,12 @@ export default function AdminPage() {
       }
       setItems(decoded);
     } catch (e: any) {
-      setError(e?.message ?? "Failed to add item");
+      const msg: string = e?.message ?? "";
+      if (msg.includes("429") || msg.includes("Too Many Requests")) {
+        setError("네트워크 요청이 많습니다. 잠시 후 다시 시도해주세요");
+      } else {
+        setError(msg || "Failed to add item");
+      }
     } finally {
       setAdding(false);
     }
@@ -384,7 +404,12 @@ export default function AdminPage() {
       }
       setItems(decoded);
     } catch (e: any) {
-      setError(e?.message ?? "Failed to update item");
+      const msg: string = e?.message ?? "";
+      if (msg.includes("429") || msg.includes("Too Many Requests")) {
+        setError("네트워크 요청이 많습니다. 잠시 후 다시 시도해주세요");
+      } else {
+        setError(msg || "Failed to update item");
+      }
     } finally {
       setUpdating(false);
     }

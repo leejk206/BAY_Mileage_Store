@@ -16,11 +16,11 @@ type Purchase = {
   amountBurned: number;
   timestamp: number;
   purchaseIndex?: number;
-  txSignature?: string; // not stored yet; for future extension
+  txSignature?: string; // resolved via RPC (getSignaturesForAddress)
 };
 
 export default function MyPurchasesPage() {
-  const { program } = useAnchorProgram();
+  const { program, connection } = useAnchorProgram();
   const { publicKey } = useWallet();
   const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [loading, setLoading] = useState(false);
@@ -83,17 +83,32 @@ export default function MyPurchasesPage() {
         );
         setItemsLoading(false);
 
-        const withNames: Purchase[] = mapped.map((p) => {
-          const meta = itemMetaMap.get(p.itemPubkey);
-          return {
-            ...p,
-            itemName: meta?.name,
-            itemImageUrl: meta?.imageUrl,
-          };
-        });
+        // Resolve tx signatures for each receipt (first signature involving the receipt account)
+        const withNamesAndTx: Purchase[] = await Promise.all(
+          mapped.map(async (p) => {
+            let txSignature: string | undefined = undefined;
+            try {
+              const sigs = await connection.getSignaturesForAddress(
+                new PublicKey(p.publicKey),
+                { limit: 1 }
+              );
+              txSignature = sigs[0]?.signature;
+            } catch {
+              // ignore, leave undefined
+            }
+
+            const meta = itemMetaMap.get(p.itemPubkey);
+            return {
+              ...p,
+              itemName: meta?.name,
+              itemImageUrl: meta?.imageUrl,
+              txSignature,
+            };
+          })
+        );
 
         // Sort by timestamp desc, then purchaseIndex asc
-        withNames.sort((a, b) => {
+        withNamesAndTx.sort((a, b) => {
           if (a.timestamp !== b.timestamp) {
             return b.timestamp - a.timestamp;
           }
@@ -102,9 +117,14 @@ export default function MyPurchasesPage() {
           return ai - bi;
         });
 
-        setPurchases(withNames);
+        setPurchases(withNamesAndTx);
       } catch (e: any) {
-        setError(e?.message ?? "Failed to load purchases");
+        const msg: string = e?.message ?? "";
+        if (msg.includes("429") || msg.includes("Too Many Requests")) {
+          setError("네트워크 요청이 많습니다. 잠시 후 다시 시도해주세요");
+        } else {
+          setError(msg || "Failed to load purchases");
+        }
       } finally {
         setLoading(false);
       }
@@ -148,9 +168,17 @@ export default function MyPurchasesPage() {
         subtitle="On-chain receipts for your BAY burns."
       />
 
-      {loading && <p className="muted">Loading purchases...</p>}
+      {loading && (
+        <div className="flex items-center gap-2 text-sm text-gray-400">
+          <div className="h-4 w-4 animate-spin rounded-full border-2 border-purple-400 border-t-transparent" />
+          <span>Loading purchases...</span>
+        </div>
+      )}
       {!loading && itemsLoading && !error && (
-        <p className="muted mt-1 text-sm">아이템 정보 불러오는 중...</p>
+        <div className="flex items-center gap-2 mt-1 text-sm text-gray-400">
+          <div className="h-3 w-3 animate-spin rounded-full border border-cyan-400 border-t-transparent" />
+          <span>아이템 정보 불러오는 중...</span>
+        </div>
       )}
       {error && <p className="error">{error}</p>}
 
@@ -251,7 +279,18 @@ export default function MyPurchasesPage() {
                           : "—"}
                       </td>
                       <td className="py-2 pr-2 text-[0.8rem] text-gray-500">
-                        N/A
+                        {p.txSignature ? (
+                          <a
+                            href={`https://explorer.solana.com/tx/${p.txSignature}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-cyan-300 underline hover:text-cyan-200"
+                          >
+                            View
+                          </a>
+                        ) : (
+                          <span className="text-gray-500">N/A</span>
+                        )}
                       </td>
                     </tr>
                   ))}
