@@ -318,7 +318,11 @@ export default function CatalogPage() {
             <span className="muted">Last purchase transaction</span>
             <div className="flex flex-wrap items-center gap-2">
               <a
-                href={`https://explorer.solana.com/tx/${lastTx}?cluster=devnet`}
+                href={`https://explorer.solana.com/tx/${lastTx}${
+                  env.NEXT_PUBLIC_SOLANA_CLUSTER === "devnet"
+                    ? "?cluster=devnet"
+                    : ""
+                }`}
                 target="_blank"
                 rel="noreferrer"
                 className="underline"

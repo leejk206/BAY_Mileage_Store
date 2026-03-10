@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useAnchorProgram } from "../../lib/anchorClient";
+import { env } from "../lib/env";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { PublicKey } from "@solana/web3.js";
 import { BAY_DECIMAL_FACTOR } from "../constants";
@@ -281,7 +282,11 @@ export default function MyPurchasesPage() {
                       <td className="py-2 pr-2 text-[0.8rem] text-gray-500">
                         {p.txSignature ? (
                           <a
-                            href={`https://explorer.solana.com/tx/${p.txSignature}`}
+                            href={`https://explorer.solana.com/tx/${p.txSignature}${
+                              env.NEXT_PUBLIC_SOLANA_CLUSTER === "devnet"
+                                ? "?cluster=devnet"
+                                : ""
+                            }`}
                             target="_blank"
                             rel="noreferrer"
                             className="text-cyan-300 underline hover:text-cyan-200"
