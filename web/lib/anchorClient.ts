@@ -14,7 +14,7 @@ import * as anchor from "@coral-xyz/anchor";
 import { PublicKey } from "@solana/web3.js";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { env } from "./env";
-import idlJson from "@/app/idl/bay_mileage_store.json";
+import idlJson from "../app/idl/bay_mileage_store.json";
 
 const PROGRAM_ID = new PublicKey(env.NEXT_PUBLIC_PROGRAM_ID);
 
