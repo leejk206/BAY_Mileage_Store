@@ -41,6 +41,8 @@ export default function CatalogPage() {
   const [buying, setBuying] = useState<string | null>(null);
   const [lastTx, setLastTx] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const [selectedItem, setSelectedItem] = useState<StoreItem | null>(null);
+  const [modalProcessing, setModalProcessing] = useState(false);
 
   const programId = new PublicKey(env.NEXT_PUBLIC_PROGRAM_ID);
   const bayMint = new PublicKey(env.NEXT_PUBLIC_BAY_MINT);
@@ -272,6 +274,14 @@ export default function CatalogPage() {
     }
   }
 
+  async function handleConfirmPurchase() {
+    if (!selectedItem) return;
+    setModalProcessing(true);
+    await handleBuy(selectedItem);
+    setModalProcessing(false);
+    setSelectedItem(null);
+  }
+
   function shortPda(pda: string) {
     if (pda.length <= 10) return pda;
     return `${pda.slice(0, 4)}...${pda.slice(-4)}`;
@@ -362,6 +372,120 @@ export default function CatalogPage() {
             </div>
           </div>
         </GlassCard>
+      )}
+
+      {selectedItem && (
+        <div
+          className="fixed inset-0 z-40 flex items-end md:items-center justify-center bg-black/60 backdrop-blur-sm"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setSelectedItem(null);
+            }
+          }}
+        >
+          <div className="w-full md:max-w-2xl bg-slate-900 text-slate-50 shadow-xl rounded-t-2xl md:rounded-2xl overflow-hidden transform transition-all duration-200">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
+              <h2 className="text-sm font-semibold">
+                {selectedItem.displayName}
+              </h2>
+              <button
+                type="button"
+                onClick={() => setSelectedItem(null)}
+                className="rounded-full p-1 text-slate-400 hover:text-slate-100 hover:bg-slate-700 transition"
+                aria-label="Close"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="flex flex-col md:flex-row">
+              <div className="md:w-1/2 border-b md:border-b-0 md:border-r border-white/10 bg-slate-950/40 flex items-center justify-center">
+                {selectedItem.imageUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={selectedItem.imageUrl}
+                    alt={selectedItem.displayName}
+                    className="w-full h-full max-h-72 object-cover"
+                  />
+                ) : (
+                  <div className="flex h-48 w-full items-center justify-center text-xs text-slate-500">
+                    No Image
+                  </div>
+                )}
+              </div>
+              <div className="md:w-1/2 px-4 py-4 space-y-3">
+                <div>
+                  <p className="text-[0.8rem] text-slate-400">상품명</p>
+                  <p className="text-sm font-semibold">
+                    {selectedItem.displayName}
+                  </p>
+                  <p className="mt-1 text-[0.8rem] text-slate-400">
+                    ID:{" "}
+                    <span className="font-mono text-slate-300">
+                      {selectedItem.name}
+                    </span>
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[0.8rem] text-slate-400">상세 설명</p>
+                  <p className="text-[0.8rem] text-slate-200 mt-1">
+                    BAY 마일리지로만 교환할 수 있는 한정 리워드입니다.
+                  </p>
+                </div>
+                <div className="flex items-center justify-between mt-2 text-[0.85rem]">
+                  <div>
+                    <p className="text-slate-400 text-[0.75rem]">가격</p>
+                    <p className="font-mono text-slate-100">
+                      {(selectedItem.price / BAY_DECIMAL_FACTOR).toString()} BAY
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-slate-400 text-[0.75rem]">
+                      내 BAY 잔액
+                    </p>
+                    <p className="font-mono text-slate-100">
+                      {bayBalance !== null ? `${bayBalance} BAY` : "—"}
+                    </p>
+                  </div>
+                </div>
+                {bayBalance !== null &&
+                  Number(bayBalance) <
+                    selectedItem.price / BAY_DECIMAL_FACTOR && (
+                    <p className="mt-2 text-[0.8rem] text-red-300">
+                      BAY 잔액이 부족하여 구매할 수 없습니다.
+                    </p>
+                  )}
+                <div className="mt-4 flex justify-end gap-2">
+                  <NeonButton
+                    type="button"
+                    variant="ghost"
+                    onClick={() => setSelectedItem(null)}
+                  >
+                    취소
+                  </NeonButton>
+                  <NeonButton
+                    type="button"
+                    disabled={
+                      modalProcessing ||
+                      (bayBalance !== null &&
+                        Number(bayBalance) <
+                          selectedItem.price / BAY_DECIMAL_FACTOR)
+                    }
+                    onClick={handleConfirmPurchase}
+                  >
+                    {modalProcessing ? (
+                      <span className="inline-flex items-center gap-2">
+                        <span className="h-3 w-3 animate-spin rounded-full border border-white border-t-transparent" />
+                        <span>Processing Transaction...</span>
+                      </span>
+                    ) : (
+                      "Confirm Purchase"
+                    )}
+                  </NeonButton>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3 mt-6">
