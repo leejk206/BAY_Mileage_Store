@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAnchorProgram } from "../lib/anchorClient";
 import { useWallet } from "@solana/wallet-adapter-react";
+import { useWalletModal } from "@solana/wallet-adapter-react-ui";
 import { env } from "../lib/env";
 import { LAMPORTS_PER_SOL, PublicKey } from "@solana/web3.js";
 import { BAY_DECIMAL_FACTOR } from "./constants";
@@ -31,6 +32,7 @@ type StoreItem = {
 export default function CatalogPage() {
   const { program, connection } = useAnchorProgram();
   const { publicKey } = useWallet();
+  const { setVisible: setWalletModalVisible } = useWalletModal();
   const [items, setItems] = useState<StoreItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -38,6 +40,7 @@ export default function CatalogPage() {
   const [solBalance, setSolBalance] = useState<string | null>(null);
   const [buying, setBuying] = useState<string | null>(null);
   const [lastTx, setLastTx] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
 
   const programId = new PublicKey(env.NEXT_PUBLIC_PROGRAM_ID);
   const bayMint = new PublicKey(env.NEXT_PUBLIC_BAY_MINT);
@@ -125,8 +128,20 @@ export default function CatalogPage() {
     })();
   }, [connection, publicKey, bayMint]);
 
+  // Auto-hide toast
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 3000);
+    return () => clearTimeout(t);
+  }, [toast]);
+
   async function handleBuy(item: StoreItem) {
-    if (!program || !publicKey) return;
+    if (!program) return;
+    if (!publicKey) {
+      // Open wallet connect modal instead of buying
+      setWalletModalVisible(true);
+      return;
+    }
     setError(null);
     setLastTx(null);
     setBuying(item.publicKey);
@@ -210,6 +225,7 @@ export default function CatalogPage() {
         .rpc();
 
       setLastTx(txSig);
+      setToast("구매 성공! 마이페이지에서 확인하세요.");
 
       // Refresh catalog and balance
       const conn =
@@ -271,6 +287,16 @@ export default function CatalogPage() {
 
   return (
     <main className="container">
+      {toast && (
+        <div className="fixed right-4 top-4 z-50">
+          <div className="rounded-xl border border-emerald-400/40 bg-emerald-500/15 px-4 py-3 text-sm text-emerald-100 shadow-lg backdrop-blur-md">
+            <div className="font-semibold mb-0.5">구매 성공!</div>
+            <div className="text-[0.8rem] text-emerald-100/90">
+              마이페이지에서 영수증을 확인하세요.
+            </div>
+          </div>
+        </div>
+      )}
       <GlassCard className="mb-6 glass-hover">
         <SectionHeader
           title="BAY Mileage Exclusive Shop"
@@ -396,16 +422,28 @@ export default function CatalogPage() {
               <div className="pt-1">
                 <NeonButton
                   disabled={
-                    !publicKey || item.stock === 0 || buying === item.publicKey
+                    item.stock === 0 ||
+                    (!!publicKey &&
+                      bayBalance !== null &&
+                      Number(bayBalance) <
+                        item.price / BAY_DECIMAL_FACTOR)
                   }
-                  onClick={() => handleBuy(item)}
+                  onClick={() => {
+                    if (!publicKey) {
+                      setWalletModalVisible(true);
+                      return;
+                    }
+                    setSelectedItem(item);
+                  }}
                 >
                   {item.stock === 0
                     ? "Sold out"
                     : !publicKey
-                    ? "Connect wallet"
-                    : buying === item.publicKey
-                    ? "Buying..."
+                    ? "지갑을 먼저 연결해주세요"
+                    : bayBalance !== null &&
+                      Number(bayBalance) <
+                        item.price / BAY_DECIMAL_FACTOR
+                    ? "잔액 부족"
                     : "Buy"}
                 </NeonButton>
               </div>

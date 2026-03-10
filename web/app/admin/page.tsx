@@ -53,6 +53,11 @@ export default function AdminPage() {
   const [initTxSig, setInitTxSig] = useState<string | null>(null);
   const [initializing, setInitializing] = useState(false);
 
+  // Sales summary
+  const [totalBurned, setTotalBurned] = useState<number | null>(null);
+  const [totalReceipts, setTotalReceipts] = useState<number | null>(null);
+  const [salesLoading, setSalesLoading] = useState(false);
+
   // v2 StoreConfig PDA derived from seeds; no longer read from env
   const storeConfigPda = useMemo(() => {
     const [pda] = PublicKey.findProgramAddressSync(
@@ -130,6 +135,33 @@ export default function AdminPage() {
         }
       } finally {
         setItemsLoading(false);
+      }
+    })();
+  }, [program, isAdmin]);
+
+  // Aggregate total BAY burned across all receipts
+  useEffect(() => {
+    if (!program || !isAdmin) return;
+    (async () => {
+      try {
+        setSalesLoading(true);
+        const receipts = await (program as any).account.purchaseReceipt.all();
+        let sum = 0;
+        for (const r of receipts) {
+          // amountBurned is u64; assume safe to cast to number for devnet scale
+          sum += Number(r.account.amountBurned);
+        }
+        setTotalBurned(sum);
+        setTotalReceipts(receipts.length);
+      } catch (e: any) {
+        const msg: string = e?.message ?? "";
+        if (msg.includes("429") || msg.includes("Too Many Requests")) {
+          setError("네트워크 요청이 많습니다. 잠시 후 다시 시도해주세요");
+        } else {
+          setError(msg || "Failed to load sales summary");
+        }
+      } finally {
+        setSalesLoading(false);
       }
     })();
   }, [program, isAdmin]);
@@ -415,6 +447,64 @@ export default function AdminPage() {
     }
   }
 
+  async function handleMarkSoldOut() {
+    if (!program || !publicKey || !selectedItem) return;
+    try {
+      setError(null);
+      setUpdating(true);
+
+      const itemPubkey = new PublicKey(selectedItem.publicKey);
+      const currentDisplay = selectedItem.displayName;
+      const currentPrice = new BN(selectedItem.price);
+      const currentImage = selectedItem.imageUrl;
+
+      await (program as any).methods
+        .updateItem(currentDisplay, currentPrice, new BN(0), currentImage)
+        .accounts({
+          item: itemPubkey,
+          storeConfig: storeConfigPda,
+          authority: publicKey,
+        })
+        .rpc()
+        .then((sig: string) => {
+          setUpdateTxSig(sig);
+        });
+
+      const conn = (program as any).provider?.connection;
+      const rawAccounts = await conn.getProgramAccounts(program.programId);
+      const coder = (program as any).coder;
+      const decoded: StoreItem[] = [];
+      for (const acc of rawAccounts) {
+        try {
+          const itemAccount: any = coder.accounts.decode(
+            "storeItem",
+            acc.account.data
+          );
+          decoded.push({
+            publicKey: acc.pubkey.toBase58(),
+            name: itemAccount.name as string,
+            displayName: itemAccount.displayName as string,
+            price: Number(itemAccount.price),
+            stock: Number(itemAccount.stock),
+            imageUrl: itemAccount.imageUrl as string,
+          });
+        } catch {
+          // ignore non-StoreItem / old layout
+        }
+      }
+      setItems(decoded);
+    } catch (e: any) {
+      const msg: string = e?.message ?? "";
+      if (msg.includes("429") || msg.includes("Too Many Requests")) {
+        setError("네트워크 요청이 많습니다. 잠시 후 다시 시도해주세요");
+      } else {
+        setError(msg || "Failed to update item");
+      }
+    } finally {
+      setUpdating(false);
+    }
+  }
+
   return (
     <main className="container">
       <SectionHeader
@@ -512,6 +602,27 @@ export default function AdminPage() {
               5)을 다시 입력하고 <span className="font-semibold">Update Item</span> 을
               눌러 가격을 재설정해 주세요.
             </p>
+          </GlassCard>
+          <GlassCard className="md:col-span-2">
+            <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-[0.8rem] text-gray-300 font-semibold">
+                  총 매출 (BAY 기준)
+                </p>
+                <p className="text-[0.85rem] text-gray-100">
+                  {totalBurned !== null
+                    ? `${(totalBurned / BAY_DECIMAL_FACTOR).toString()} BAY`
+                    : "—"}
+                </p>
+              </div>
+              <div className="text-right text-[0.75rem] text-gray-400">
+                {salesLoading
+                  ? "매출 데이터 불러오는 중..."
+                  : totalReceipts !== null
+                  ? `총 영수증 수: ${totalReceipts}`
+                  : ""}
+              </div>
+            </div>
           </GlassCard>
           <GlassCard>
             <h2 className="text-sm font-semibold text-gray-100">
