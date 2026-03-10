@@ -267,8 +267,8 @@ export default function CatalogPage() {
     <main className="container">
       <GlassCard className="mb-6 glass-hover">
         <SectionHeader
-          title="Mileage Shop"
-          subtitle="Burn BAY to redeem items on devnet"
+          title="BAY Mileage Exclusive Shop"
+          subtitle="Burn BAY to redeem exclusive items on devnet"
           rightSlot={
             publicKey ? (
               <div className="flex flex-col gap-2 items-end">
@@ -291,17 +291,6 @@ export default function CatalogPage() {
                     상점에서 사용 가능한 BAY 토큰이 없습니다.
                   </p>
                 )}
-                <div className="flex items-center gap-2 text-[0.8rem] text-gray-400">
-                  <span>{shortPda(storeConfigPda.toBase58())}</span>
-                  <NeonButton
-                    variant="ghost"
-                    className="px-2 py-1 text-[0.8rem]"
-                    type="button"
-                    onClick={() => copyToClipboard(storeConfigPda.toBase58())}
-                  >
-                    Copy
-                  </NeonButton>
-                </div>
               </div>
             ) : (
               <span className="muted">Connect wallet to view balances</span>

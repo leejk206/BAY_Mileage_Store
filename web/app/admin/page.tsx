@@ -417,12 +417,6 @@ export default function AdminPage() {
       <GlassCard className="mt-3">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="text-sm text-gray-300">
-              <span className="font-medium">StoreConfig PDA:</span>{" "}
-              <span className="font-mono text-xs">
-                {storeConfigPda.toBase58()}
-              </span>
-            </p>
             <p className="mt-1 text-sm text-gray-400">
               Use this console to add or update catalog items for the event
               store.
@@ -727,6 +721,11 @@ export default function AdminPage() {
               </form>
             )}
           </GlassCard>
+          <div className="md:col-span-2 mt-4 text-[0.75rem] text-gray-500">
+            <p className="font-mono break-all">
+              StoreConfig PDA: {storeConfigPda.toBase58()}
+            </p>
+          </div>
         </div>
       )}
     </main>

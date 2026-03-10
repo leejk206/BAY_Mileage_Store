@@ -24,6 +24,7 @@ export default function MyPurchasesPage() {
   const { publicKey } = useWallet();
   const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [loading, setLoading] = useState(false);
+  const [itemsLoading, setItemsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [sortOrder, setSortOrder] = useState<"newest" | "oldest">("newest");
@@ -63,6 +64,7 @@ export default function MyPurchasesPage() {
           string,
           { name?: string; imageUrl?: string }
         >();
+        setItemsLoading(true);
         await Promise.all(
           uniqueItemPubkeys.map(async (pkStr) => {
             try {
@@ -79,6 +81,7 @@ export default function MyPurchasesPage() {
             }
           })
         );
+        setItemsLoading(false);
 
         const withNames: Purchase[] = mapped.map((p) => {
           const meta = itemMetaMap.get(p.itemPubkey);
@@ -145,7 +148,10 @@ export default function MyPurchasesPage() {
         subtitle="On-chain receipts for your BAY burns."
       />
 
-              {loading && <p className="muted">Loading purchases...</p>}
+      {loading && <p className="muted">Loading purchases...</p>}
+      {!loading && itemsLoading && !error && (
+        <p className="muted mt-1 text-sm">아이템 정보 불러오는 중...</p>
+      )}
       {error && <p className="error">{error}</p>}
 
       {!loading && !error && purchases.length === 0 && (
@@ -191,7 +197,7 @@ export default function MyPurchasesPage() {
                 <thead className="border-b border-white/10 text-[0.8rem] uppercase tracking-[0.16em] text-gray-400">
                   <tr>
                     <th className="py-2 pr-4">Item</th>
-                    <th className="py-2 pr-4">Burned (BAY)</th>
+                    <th className="py-2 pr-4">Price (BAY)</th>
                     <th className="py-2 pr-4">Time</th>
                     <th className="py-2 pr-4">Receipt index</th>
                     <th className="py-2 pr-2">Explorer</th>
@@ -225,13 +231,11 @@ export default function MyPurchasesPage() {
                           </div>
                           <div className="flex flex-col">
                             <span className="text-[0.8rem] font-medium">
-                              {p.itemName ?? p.itemPubkey}
+                              {p.itemName ?? "알 수 없는 아이템"}
                             </span>
-                            {p.itemName && (
-                              <span className="text-[0.8rem] text-gray-500">
-                                {p.itemPubkey}
-                              </span>
-                            )}
+                            <span className="text-[0.8rem] text-gray-500">
+                              {p.itemPubkey}
+                            </span>
                           </div>
                         </div>
                       </td>
