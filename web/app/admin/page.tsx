@@ -79,12 +79,13 @@ export default function AdminPage() {
         const config: any = await (program as any).account.storeConfig.fetch(
           storeConfigPda
         );
-        const authority = config.authority.toBase58();
-        setStoreAuthority(authority);
+        // v2 StoreConfig 가 온체인에 존재함
         const onChainAdmins: string[] = (config.admins as any[] | undefined)
           ?.map((k: any) => k.toBase58?.() ?? String(k))
           ?? [];
         setAdmins(onChainAdmins);
+        const authority = config.authority.toBase58();
+        setStoreAuthority(authority);
         const walletAddress = publicKey?.toBase58();
         const isEnvAdmin = checkIsAdmin(walletAddress);
         const isOnChainAdmin =
@@ -95,6 +96,14 @@ export default function AdminPage() {
         setIsAdmin(isEnvAdmin || isOnChainAdmin);
       } catch (e: any) {
         const msg: string = e?.message ?? "";
+        // 아직 v2 StoreConfig PDA 계정이 생성되지 않은 경우: 치명적인 에러로 보지 않고
+        // 초기화 버튼을 통해 생성할 수 있도록 조용히 무시한다.
+        if (
+          msg.includes("Account does not exist") ||
+          msg.includes("could not find account")
+        ) {
+          return;
+        }
         if (msg.includes("429") || msg.includes("Too Many Requests")) {
           setError("네트워크 요청이 많습니다. 잠시 후 다시 시도해주세요");
         } else {
