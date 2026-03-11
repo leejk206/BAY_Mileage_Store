@@ -455,11 +455,11 @@ export default function AdminPage() {
             displayName: itemAccount.displayName as string,
             price: Number(itemAccount.price),
             stock: Number(itemAccount.stock),
-              imageUrl: itemAccount.imageUrl as string,
-              isActive:
-                (itemAccount as any).isActive === undefined
-                  ? true
-                  : Boolean((itemAccount as any).isActive),
+            imageUrl: itemAccount.imageUrl as string,
+            isActive:
+              (itemAccount as any).isActive === undefined
+                ? true
+                : Boolean((itemAccount as any).isActive),
           });
         } catch {
           // ignore non-StoreItem / old layout
@@ -522,10 +522,6 @@ export default function AdminPage() {
               (itemAccount as any).isActive === undefined
                 ? true
                 : Boolean((itemAccount as any).isActive),
-              isActive:
-                (itemAccount as any).isActive === undefined
-                  ? true
-                  : Boolean((itemAccount as any).isActive),
           });
         } catch {
           // ignore non-StoreItem / old layout
