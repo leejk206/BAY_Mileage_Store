@@ -71,6 +71,14 @@ export default function AdminPage() {
     return pda;
   }, []);
 
+  // 디버그용: 현재 계산된 StoreConfig PDA 를 브라우저 콘솔에 출력
+  useEffect(() => {
+    console.log(
+      "[BAY] StoreConfig PDA (from env NEXT_PUBLIC_PROGRAM_ID):",
+      storeConfigPda.toBase58()
+    );
+  }, [storeConfigPda]);
+
   useEffect(() => {
     if (!program) return;
     (async () => {
