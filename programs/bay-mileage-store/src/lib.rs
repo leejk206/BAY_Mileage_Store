@@ -15,6 +15,8 @@ pub mod bay_mileage_store {
         config.authority = ctx.accounts.authority.key();
         config.bay_mint = ctx.accounts.bay_mint.key();
         config.bump = ctx.bumps.store_config;
+        // 첫 관리자 목록에 초기 authority 를 추가
+        config.admins = vec![ctx.accounts.authority.key()];
         Ok(())
     }
 
@@ -32,6 +34,13 @@ pub mod bay_mileage_store {
         require!(display_name.len() <= 64, BayError::NameTooLong);
         // 이미지 URL 은 1024자까지 허용
         require!(image_url.len() <= 1024, BayError::NameTooLong);
+
+        // 관리자 목록에 포함된 지갑만 아이템을 추가할 수 있음
+        let config = &ctx.accounts.store_config;
+        require!(
+            config.admins.contains(&ctx.accounts.authority.key()),
+            BayError::UnauthorizedAdmin
+        );
 
         let item = &mut ctx.accounts.item;
         item.name = name;
@@ -52,6 +61,13 @@ pub mod bay_mileage_store {
     ) -> Result<()> {
         require!(display_name.len() <= 64, BayError::NameTooLong);
         require!(image_url.len() <= 1024, BayError::NameTooLong);
+
+        let config = &ctx.accounts.store_config;
+        require!(
+            config.admins.contains(&ctx.accounts.authority.key()),
+            BayError::UnauthorizedAdmin
+        );
+
         let item = &mut ctx.accounts.item;
         item.display_name = display_name;
         item.price = price;
@@ -65,7 +81,39 @@ pub mod bay_mileage_store {
         new_bay_mint: Pubkey,
     ) -> Result<()> {
         let config = &mut ctx.accounts.store_config;
+        require!(
+            config.admins.contains(&ctx.accounts.authority.key()),
+            BayError::UnauthorizedAdmin
+        );
         config.bay_mint = new_bay_mint;
+        Ok(())
+    }
+
+    pub fn add_admin(ctx: Context<AddAdmin>, new_admin: Pubkey) -> Result<()> {
+        let config = &mut ctx.accounts.store_config;
+        // 루트 authority 만 관리자 목록 갱신 가능
+        require_keys_eq!(config.authority, ctx.accounts.authority.key());
+        if !config.admins.contains(&new_admin) {
+            require!(
+                config.admins.len() < StoreConfig::MAX_ADMINS,
+                BayError::TooManyAdmins
+            );
+            config.admins.push(new_admin);
+        }
+        Ok(())
+    }
+
+    pub fn remove_admin(ctx: Context<RemoveAdmin>, admin_to_remove: Pubkey) -> Result<()> {
+        let config = &mut ctx.accounts.store_config;
+        require_keys_eq!(config.authority, ctx.accounts.authority.key());
+        // authority 자신은 제거할 수 없도록 보호
+        require!(
+            admin_to_remove != config.authority,
+            BayError::CannotRemoveRootAdmin
+        );
+        if let Some(pos) = config.admins.iter().position(|k| *k == admin_to_remove) {
+            config.admins.remove(pos);
+        }
         Ok(())
     }
 
@@ -116,9 +164,15 @@ pub mod bay_mileage_store {
 #[account]
 #[derive(InitSpace)]
 pub struct StoreConfig {
-    pub authority: Pubkey, // 32 -- operator wallet
+    pub authority: Pubkey, // 32 -- root operator wallet
     pub bay_mint: Pubkey,  // 32 -- BAY token mint address
     pub bump: u8,          // 1
+    #[max_len(10)]
+    pub admins: Vec<Pubkey>, // up to 10 admins
+}
+
+impl StoreConfig {
+    pub const MAX_ADMINS: usize = 10;
 }
 
 #[account]
@@ -296,6 +350,34 @@ pub struct UpdateConfig<'info> {
     pub authority: Signer<'info>,
 }
 
+#[derive(Accounts)]
+pub struct AddAdmin<'info> {
+    #[account(
+        mut,
+        seeds = [b"store_config_v2"],
+        bump = store_config.bump,
+        has_one = authority,
+    )]
+    pub store_config: Account<'info, StoreConfig>,
+
+    #[account(mut)]
+    pub authority: Signer<'info>,
+}
+
+#[derive(Accounts)]
+pub struct RemoveAdmin<'info> {
+    #[account(
+        mut,
+        seeds = [b"store_config_v2"],
+        bump = store_config.bump,
+        has_one = authority,
+    )]
+    pub store_config: Account<'info, StoreConfig>,
+
+    #[account(mut)]
+    pub authority: Signer<'info>,
+}
+
 // -- Custom Errors -----------------------------------------------------------
 
 #[error_code]
@@ -308,4 +390,13 @@ pub enum BayError {
 
     #[msg("Item name must be 32 characters or fewer")]
     NameTooLong,
+
+    #[msg("Caller is not an authorized admin")]
+    UnauthorizedAdmin,
+
+    #[msg("Too many admins configured")]
+    TooManyAdmins,
+
+    #[msg("Cannot remove root authority from admins")]
+    CannotRemoveRootAdmin,
 }

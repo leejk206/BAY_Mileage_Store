@@ -27,6 +27,7 @@ export default function AdminPage() {
 
   const [isAdmin, setIsAdmin] = useState(false);
   const [storeAuthority, setStoreAuthority] = useState<string | null>(null);
+  const [admins, setAdmins] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   const [items, setItems] = useState<StoreItem[]>([]);
@@ -58,6 +59,9 @@ export default function AdminPage() {
   const [totalReceipts, setTotalReceipts] = useState<number | null>(null);
   const [salesLoading, setSalesLoading] = useState(false);
 
+  // Admin management form
+  const [newAdminAddress, setNewAdminAddress] = useState("");
+
   // v2 StoreConfig PDA derived from seeds; no longer read from env
   const storeConfigPda = useMemo(() => {
     const [pda] = PublicKey.findProgramAddressSync(
@@ -77,13 +81,18 @@ export default function AdminPage() {
         );
         const authority = config.authority.toBase58();
         setStoreAuthority(authority);
+        const onChainAdmins: string[] = (config.admins as any[] | undefined)
+          ?.map((k: any) => k.toBase58?.() ?? String(k))
+          ?? [];
+        setAdmins(onChainAdmins);
         const walletAddress = publicKey?.toBase58();
         const isEnvAdmin = checkIsAdmin(walletAddress);
-        const matchesStoreAuthority =
-          walletAddress !== undefined && walletAddress === authority;
-        // env admin 이면 온체인 authority 와 무관하게 admin 인정,
-        // 아니면 기존대로 온체인 authority 기준
-        setIsAdmin(isEnvAdmin || matchesStoreAuthority);
+        const isOnChainAdmin =
+          walletAddress !== undefined &&
+          onChainAdmins.includes(walletAddress);
+        // env admin 이면 온체인 admins 와 무관하게 admin 인정,
+        // 아니면 admins 목록 기준
+        setIsAdmin(isEnvAdmin || isOnChainAdmin);
       } catch (e: any) {
         const msg: string = e?.message ?? "";
         if (msg.includes("429") || msg.includes("Too Many Requests")) {
@@ -505,6 +514,39 @@ export default function AdminPage() {
     }
   }
 
+  async function handleAddAdmin(e: FormEvent) {
+    e.preventDefault();
+    if (!program || !publicKey) return;
+    try {
+      setError(null);
+      const pk = new PublicKey(newAdminAddress.trim());
+      await (program as any).methods
+        .addAdmin(pk)
+        .accounts({
+          storeConfig: storeConfigPda,
+          authority: publicKey,
+        })
+        .rpc();
+
+      // Refresh config to get updated admins
+      const config: any = await (program as any).account.storeConfig.fetch(
+        storeConfigPda
+      );
+      const updatedAdmins: string[] = (config.admins as any[] | undefined)
+        ?.map((k: any) => k.toBase58?.() ?? String(k))
+        ?? [];
+      setAdmins(updatedAdmins);
+      setNewAdminAddress("");
+    } catch (e: any) {
+      const msg: string = e?.message ?? "";
+      if (msg.includes("429") || msg.includes("Too Many Requests")) {
+        setError("네트워크 요청이 많습니다. 잠시 후 다시 시도해주세요");
+      } else {
+        setError(msg || "Failed to add admin");
+      }
+    }
+  }
+
   return (
     <main className="container">
       <SectionHeader
@@ -602,6 +644,39 @@ export default function AdminPage() {
               5)을 다시 입력하고 <span className="font-semibold">Update Item</span> 을
               눌러 가격을 재설정해 주세요.
             </p>
+          </GlassCard>
+          <GlassCard className="md:col-span-2">
+            <h2 className="text-sm font-semibold text-gray-100">
+              Admins
+            </h2>
+            <p className="mt-1 text-[0.8rem] text-gray-400">
+              온체인 StoreConfig.admins 에 등록된 관리자 주소 목록입니다.
+            </p>
+            <ul className="mt-2 space-y-1 text-[0.8rem] font-mono text-gray-200">
+              {admins.length === 0 && (
+                <li className="text-gray-500">No admins configured.</li>
+              )}
+              {admins.map((a) => (
+                <li key={a} className="break-all">
+                  {a}
+                </li>
+              ))}
+            </ul>
+            <form onSubmit={handleAddAdmin} className="mt-3 space-y-1.5">
+              <label className="block text-[0.8rem] font-medium text-gray-300">
+                Add admin address
+              </label>
+              <input
+                type="text"
+                value={newAdminAddress}
+                onChange={(e) => setNewAdminAddress(e.target.value)}
+                placeholder="New admin pubkey"
+                className="mt-1 w-full rounded-xl border border-white/20 bg-black/40 px-4 py-2 text-sm text-gray-100 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400"
+              />
+              <NeonButton type="submit" disabled={!newAdminAddress.trim()}>
+                Add Admin
+              </NeonButton>
+            </form>
           </GlassCard>
           <GlassCard className="md:col-span-2">
             <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">

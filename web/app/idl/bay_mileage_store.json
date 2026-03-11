@@ -8,6 +8,63 @@
   },
   "instructions": [
     {
+      "name": "add_admin",
+      "discriminator": [
+        177,
+        236,
+        33,
+        205,
+        124,
+        152,
+        55,
+        186
+      ],
+      "accounts": [
+        {
+          "name": "store_config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  111,
+                  114,
+                  101,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103,
+                  95,
+                  118,
+                  50
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "store_config"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "new_admin",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
       "name": "add_item",
       "discriminator": [
         225,
@@ -406,6 +463,63 @@
       "args": []
     },
     {
+      "name": "remove_admin",
+      "discriminator": [
+        74,
+        202,
+        71,
+        106,
+        252,
+        31,
+        72,
+        183
+      ],
+      "accounts": [
+        {
+          "name": "store_config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  111,
+                  114,
+                  101,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103,
+                  95,
+                  118,
+                  50
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "store_config"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "admin_to_remove",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
       "name": "update_config",
       "discriminator": [
         29,
@@ -622,6 +736,21 @@
       "code": 6002,
       "name": "NameTooLong",
       "msg": "Item name must be 32 characters or fewer"
+    },
+    {
+      "code": 6003,
+      "name": "UnauthorizedAdmin",
+      "msg": "Caller is not an authorized admin"
+    },
+    {
+      "code": 6004,
+      "name": "TooManyAdmins",
+      "msg": "Too many admins configured"
+    },
+    {
+      "code": 6005,
+      "name": "CannotRemoveRootAdmin",
+      "msg": "Cannot remove root authority from admins"
     }
   ],
   "types": [
@@ -697,6 +826,12 @@
           {
             "name": "bump",
             "type": "u8"
+          },
+          {
+            "name": "admins",
+            "type": {
+              "vec": "pubkey"
+            }
           }
         ]
       }
