@@ -27,6 +27,7 @@ type StoreItem = {
   price: number;
   stock: number;
   imageUrl?: string;
+  isActive?: boolean;
 };
 
 export default function CatalogPage() {
@@ -79,13 +80,18 @@ export default function CatalogPage() {
               price: Number(itemAccount.price),
               stock: Number(itemAccount.stock),
               imageUrl: itemAccount.imageUrl as string | undefined,
+              isActive:
+                (itemAccount as any).isActive === undefined
+                  ? true
+                  : Boolean((itemAccount as any).isActive),
             });
           } catch {
             // Not a StoreItem or old layout; safely ignore
           }
         }
 
-        setItems(decoded);
+        // 일반 사용자에게는 활성화된(isActive !== false) 아이템만 노출
+        setItems(decoded.filter((i) => i.isActive !== false));
       } catch (e: any) {
         const msg: string = e?.message ?? "";
         if (msg.includes("429") || msg.includes("Too Many Requests")) {
@@ -150,7 +156,7 @@ export default function CatalogPage() {
     try {
       // Derive PDAs
       const itemPda = PublicKey.findProgramAddressSync(
-        [Buffer.from("item"), Buffer.from(item.name)],
+        [Buffer.from("item_v2"), Buffer.from(item.name)],
         programId
       )[0];
 

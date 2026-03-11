@@ -19,6 +19,7 @@ type StoreItem = {
   price: number;
   stock: number;
   imageUrl: string;
+  isActive?: boolean;
 };
 
 export default function AdminPage() {
@@ -137,6 +138,10 @@ export default function AdminPage() {
               price: Number(itemAccount.price),
               stock: Number(itemAccount.stock),
               imageUrl: itemAccount.imageUrl as string,
+              isActive:
+                (itemAccount as any).isActive === undefined
+                  ? true
+                  : Boolean((itemAccount as any).isActive),
             });
           } catch {
             // Not a StoreItem or old layout; ignore
@@ -314,7 +319,7 @@ export default function AdminPage() {
       }
 
       const [itemPda] = PublicKey.findProgramAddressSync(
-        [Buffer.from("item"), Buffer.from(addName)],
+        [Buffer.from("item_v2"), Buffer.from(addName)],
         new PublicKey(env.NEXT_PUBLIC_PROGRAM_ID)
       );
 
@@ -360,6 +365,10 @@ export default function AdminPage() {
             price: Number(itemAccount.price),
             stock: Number(itemAccount.stock),
             imageUrl: itemAccount.imageUrl as string,
+            isActive:
+              (itemAccount as any).isActive === undefined
+                ? true
+                : Boolean((itemAccount as any).isActive),
           });
         } catch {
           // ignore non-StoreItem / old layout
@@ -446,7 +455,11 @@ export default function AdminPage() {
             displayName: itemAccount.displayName as string,
             price: Number(itemAccount.price),
             stock: Number(itemAccount.stock),
-            imageUrl: itemAccount.imageUrl as string,
+              imageUrl: itemAccount.imageUrl as string,
+              isActive:
+                (itemAccount as any).isActive === undefined
+                  ? true
+                  : Boolean((itemAccount as any).isActive),
           });
         } catch {
           // ignore non-StoreItem / old layout
@@ -505,6 +518,14 @@ export default function AdminPage() {
             price: Number(itemAccount.price),
             stock: Number(itemAccount.stock),
             imageUrl: itemAccount.imageUrl as string,
+            isActive:
+              (itemAccount as any).isActive === undefined
+                ? true
+                : Boolean((itemAccount as any).isActive),
+              isActive:
+                (itemAccount as any).isActive === undefined
+                  ? true
+                  : Boolean((itemAccount as any).isActive),
           });
         } catch {
           // ignore non-StoreItem / old layout
@@ -517,6 +538,65 @@ export default function AdminPage() {
         setError("네트워크 요청이 많습니다. 잠시 후 다시 시도해주세요");
       } else {
         setError(msg || "Failed to update item");
+      }
+    } finally {
+      setUpdating(false);
+    }
+  }
+
+  async function handleToggleItemStatus() {
+    if (!program || !publicKey || !selectedItem) return;
+    try {
+      setError(null);
+      setUpdating(true);
+
+      const itemPubkey = new PublicKey(selectedItem.publicKey);
+
+      await (program as any).methods
+        .toggleItemStatus()
+        .accounts({
+          item: itemPubkey,
+          storeConfig: storeConfigPda,
+          authority: publicKey,
+        })
+        .rpc()
+        .then((sig: string) => {
+          setUpdateTxSig(sig);
+        });
+
+      const conn = (program as any).provider?.connection;
+      const rawAccounts = await conn.getProgramAccounts(program.programId);
+      const coder = (program as any).coder;
+      const decoded: StoreItem[] = [];
+      for (const acc of rawAccounts) {
+        try {
+          const itemAccount: any = coder.accounts.decode(
+            "storeItem",
+            acc.account.data
+          );
+          decoded.push({
+            publicKey: acc.pubkey.toBase58(),
+            name: itemAccount.name as string,
+            displayName: itemAccount.displayName as string,
+            price: Number(itemAccount.price),
+            stock: Number(itemAccount.stock),
+            imageUrl: itemAccount.imageUrl as string,
+            isActive:
+              (itemAccount as any).isActive === undefined
+                ? true
+                : Boolean((itemAccount as any).isActive),
+          });
+        } catch {
+          // ignore non-StoreItem / old layout
+        }
+      }
+      setItems(decoded);
+    } catch (e: any) {
+      const msg: string = e?.message ?? "";
+      if (msg.includes("429") || msg.includes("Too Many Requests")) {
+        setError("네트워크 요청이 많습니다. 잠시 후 다시 시도해주세요");
+      } else {
+        setError(msg || "Failed to toggle item status");
       }
     } finally {
       setUpdating(false);
@@ -839,7 +919,8 @@ export default function AdminPage() {
                     {items.map((item) => (
                       <option key={item.publicKey} value={item.publicKey}>
                         {item.displayName} ({item.name}) (
-                        {formatAddress(item.publicKey)})
+                        {formatAddress(item.publicKey)}){" "}
+                        {item.isActive === false ? "[hidden]" : ""}
                       </option>
                     ))}
                   </select>
@@ -859,6 +940,17 @@ export default function AdminPage() {
                       Display:{" "}
                       <span className="font-mono">
                         {selectedItem.displayName}
+                      </span>
+                      <br />
+                      Status:{" "}
+                      <span
+                        className={
+                          selectedItem.isActive === false
+                            ? "text-red-300"
+                            : "text-emerald-300"
+                        }
+                      >
+                        {selectedItem.isActive === false ? "Hidden" : "Active"}
                       </span>
                     </p>
                   )}
@@ -925,9 +1017,19 @@ export default function AdminPage() {
                     placeholder="e.g. 12"
                   />
                 </div>
-                <NeonButton type="submit" disabled={updating}>
-                  {updating ? "Updating..." : "Update Item"}
-                </NeonButton>
+                <div className="flex flex-wrap gap-2">
+                  <NeonButton type="submit" disabled={updating}>
+                    {updating ? "Updating..." : "Update Item"}
+                  </NeonButton>
+                  <NeonButton
+                    type="button"
+                    disabled={updating || !selectedItem}
+                    variant="ghost"
+                    onClick={handleToggleItemStatus}
+                  >
+                    {selectedItem?.isActive === false ? "Show Item" : "Hide Item"}
+                  </NeonButton>
+                </div>
                 {updateTxSig && (
                   <div className="mt-2 rounded-[8px] border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-[0.8rem] text-emerald-100">
                     <div className="font-medium mb-0.5">

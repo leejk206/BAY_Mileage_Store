@@ -48,6 +48,7 @@ pub mod bay_mileage_store {
         item.price = price;
         item.stock = stock;
         item.image_url = image_url;
+        item.is_active = true;
         item.bump = ctx.bumps.item;
         Ok(())
     }
@@ -114,6 +115,18 @@ pub mod bay_mileage_store {
         if let Some(pos) = config.admins.iter().position(|k| *k == admin_to_remove) {
             config.admins.remove(pos);
         }
+        Ok(())
+    }
+
+    pub fn toggle_item_status(ctx: Context<ToggleItemStatus>) -> Result<()> {
+        let config = &ctx.accounts.store_config;
+        require!(
+            config.admins.contains(&ctx.accounts.authority.key()),
+            BayError::UnauthorizedAdmin
+        );
+
+        let item = &mut ctx.accounts.item;
+        item.is_active = !item.is_active;
         Ok(())
     }
 
@@ -186,6 +199,7 @@ pub struct StoreItem {
     pub stock: u64,            // 8
     #[max_len(1024)]
     pub image_url: String,     // 4 + 1024 = 1028 (URL 문자열)
+    pub is_active: bool,       // 1 -- whether item is visible/active
     pub bump: u8,              // 1
 }
 
@@ -239,7 +253,7 @@ pub struct AddItem<'info> {
         init,
         payer = authority,
         space = 8 + StoreItem::INIT_SPACE,
-        seeds = [b"item", name.as_bytes()],
+        seeds = [b"item_v2", name.as_bytes()],
         bump,
     )]
     pub item: Account<'info, StoreItem>,
@@ -283,7 +297,7 @@ pub struct Purchase<'info> {
 
     #[account(
         mut,
-        seeds = [b"item", item.name.as_bytes()],
+        seeds = [b"item_v2", item.name.as_bytes()],
         bump = item.bump,
     )]
     pub item: Account<'info, StoreItem>,
@@ -320,7 +334,7 @@ pub struct Purchase<'info> {
 pub struct UpdateItem<'info> {
     #[account(
         mut,
-        seeds = [b"item", item.name.as_bytes()],
+        seeds = [b"item_v2", item.name.as_bytes()],
         bump = item.bump,
     )]
     pub item: Account<'info, StoreItem>,
@@ -340,6 +354,26 @@ pub struct UpdateItem<'info> {
 pub struct UpdateConfig<'info> {
     #[account(
         mut,
+        seeds = [b"store_config_v3"],
+        bump = store_config.bump,
+        has_one = authority,
+    )]
+    pub store_config: Account<'info, StoreConfig>,
+
+    #[account(mut)]
+    pub authority: Signer<'info>,
+}
+
+#[derive(Accounts)]
+pub struct ToggleItemStatus<'info> {
+    #[account(
+        mut,
+        seeds = [b"item_v2", item.name.as_bytes()],
+        bump = item.bump,
+    )]
+    pub item: Account<'info, StoreItem>,
+
+    #[account(
         seeds = [b"store_config_v3"],
         bump = store_config.bump,
         has_one = authority,
