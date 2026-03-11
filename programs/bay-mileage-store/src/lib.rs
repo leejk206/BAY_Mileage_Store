@@ -217,9 +217,9 @@ pub struct InitializeStore<'info> {
         init,
         payer = authority,
         space = 8 + StoreConfig::INIT_SPACE,
-        // v2: use a new seed so we can create a fresh StoreConfig
-        // without conflicting with any existing store_config PDA.
-        seeds = [b"store_config_v2"],
+        // v3: use a new seed so we can create a fresh StoreConfig
+        // without conflicting with any existing store_config_v2 PDA.
+        seeds = [b"store_config_v3"],
         bump,
     )]
     pub store_config: Account<'info, StoreConfig>,
@@ -245,7 +245,7 @@ pub struct AddItem<'info> {
     pub item: Account<'info, StoreItem>,
 
     #[account(
-        seeds = [b"store_config_v2"],
+        seeds = [b"store_config_v3"],
         bump = store_config.bump,
         has_one = authority,
     )]
@@ -276,7 +276,7 @@ pub struct Purchase<'info> {
     pub bay_mint: Account<'info, Mint>,
 
     #[account(
-        seeds = [b"store_config_v2"],
+        seeds = [b"store_config_v3"],
         bump = store_config.bump,
     )]
     pub store_config: Account<'info, StoreConfig>,
@@ -326,7 +326,7 @@ pub struct UpdateItem<'info> {
     pub item: Account<'info, StoreItem>,
 
     #[account(
-        seeds = [b"store_config_v2"],
+        seeds = [b"store_config_v3"],
         bump = store_config.bump,
         has_one = authority,
     )]
@@ -340,7 +340,7 @@ pub struct UpdateItem<'info> {
 pub struct UpdateConfig<'info> {
     #[account(
         mut,
-        seeds = [b"store_config_v2"],
+        seeds = [b"store_config_v3"],
         bump = store_config.bump,
         has_one = authority,
     )]
@@ -354,7 +354,7 @@ pub struct UpdateConfig<'info> {
 pub struct AddAdmin<'info> {
     #[account(
         mut,
-        seeds = [b"store_config_v2"],
+        seeds = [b"store_config_v3"],
         bump = store_config.bump,
         has_one = authority,
     )]
@@ -368,7 +368,7 @@ pub struct AddAdmin<'info> {
 pub struct RemoveAdmin<'info> {
     #[account(
         mut,
-        seeds = [b"store_config_v2"],
+        seeds = [b"store_config_v3"],
         bump = store_config.bump,
         has_one = authority,
     )]

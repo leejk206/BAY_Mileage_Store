@@ -62,22 +62,14 @@ export default function AdminPage() {
   // Admin management form
   const [newAdminAddress, setNewAdminAddress] = useState("");
 
-  // v2 StoreConfig PDA derived from seeds; no longer read from env
+  // v3 StoreConfig PDA derived from seeds; no longer read from env PDA
   const storeConfigPda = useMemo(() => {
     const [pda] = PublicKey.findProgramAddressSync(
-      [Buffer.from("store_config_v2")],
+      [Buffer.from("store_config_v3")],
       new PublicKey(env.NEXT_PUBLIC_PROGRAM_ID)
     );
     return pda;
   }, []);
-
-  // 디버그용: 현재 계산된 StoreConfig PDA 를 브라우저 콘솔에 출력
-  useEffect(() => {
-    console.log(
-      "[BAY] StoreConfig PDA (from env NEXT_PUBLIC_PROGRAM_ID):",
-      storeConfigPda.toBase58()
-    );
-  }, [storeConfigPda]);
 
   useEffect(() => {
     if (!program) return;

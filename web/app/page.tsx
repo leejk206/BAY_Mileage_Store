@@ -48,7 +48,7 @@ export default function CatalogPage() {
   const bayMint = new PublicKey(env.NEXT_PUBLIC_BAY_MINT);
   const storeConfigPda = useMemo(() => {
     const [pda] = PublicKey.findProgramAddressSync(
-      [Buffer.from("store_config_v2")],
+      [Buffer.from("store_config_v3")],
       programId
     );
     return pda;

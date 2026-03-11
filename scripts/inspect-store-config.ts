@@ -8,7 +8,7 @@ const PROGRAM_ID = new PublicKey("3HgyGbc6oQvGMiWxMFCTfk4br1K4Zv6Jy2oR3chCcFag")
 
 function deriveStoreConfigPDA(): [PublicKey, number] {
   return PublicKey.findProgramAddressSync(
-    [Buffer.from("store_config_v2")],
+    [Buffer.from("store_config_v3")],
     PROGRAM_ID
   );
 }

@@ -10,7 +10,7 @@ const NEW_BAY_MINT = new PublicKey(
 
 function deriveStoreConfigPda(): [PublicKey, number] {
   return PublicKey.findProgramAddressSync(
-    [Buffer.from("store_config_v2")],
+    [Buffer.from("store_config_v3")],
     PROGRAM_ID
   );
 }
