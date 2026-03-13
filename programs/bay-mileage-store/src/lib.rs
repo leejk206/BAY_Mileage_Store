@@ -130,6 +130,16 @@ pub mod bay_mileage_store {
         Ok(())
     }
 
+    pub fn close_item(ctx: Context<CloseItem>, _name: String) -> Result<()> {
+        let config = &ctx.accounts.store_config;
+        require!(
+            config.admins.contains(&ctx.accounts.authority.key()),
+            BayError::UnauthorizedAdmin
+        );
+        // item 계정은 close = authority 로 lamports 회수 후 소멸됨
+        Ok(())
+    }
+
     pub fn delete_legacy_item(
         ctx: Context<DeleteLegacyItem>,
         _name: String,
@@ -445,6 +455,27 @@ pub struct RemoveAdmin<'info> {
 
 #[derive(Accounts)]
 #[instruction(name: String)]
+pub struct CloseItem<'info> {
+    #[account(mut)]
+    pub authority: Signer<'info>,
+
+    #[account(
+        seeds = [b"store_config_v3"],
+        bump = store_config.bump,
+    )]
+    pub store_config: Account<'info, StoreConfig>,
+
+    #[account(
+        mut,
+        close = authority,
+        seeds = [b"item_v2", name.as_bytes()],
+        bump = item.bump,
+    )]
+    pub item: Account<'info, StoreItem>,
+}
+
+#[derive(Accounts)]
+#[instruction(name: String)]
 pub struct DeleteLegacyItem<'info> {
     #[account(mut)]
     pub authority: Signer<'info>,
@@ -452,7 +483,6 @@ pub struct DeleteLegacyItem<'info> {
     #[account(
         seeds = [b"store_config_v3"],
         bump = store_config.bump,
-        has_one = authority,
     )]
     pub store_config: Account<'info, StoreConfig>,
 

@@ -42,7 +42,7 @@
                   103,
                   95,
                   118,
-                  50
+                  51
                 ]
               }
             ]
@@ -88,7 +88,10 @@
                   105,
                   116,
                   101,
-                  109
+                  109,
+                  95,
+                  118,
+                  50
                 ]
               },
               {
@@ -119,7 +122,7 @@
                   103,
                   95,
                   118,
-                  50
+                  51
                 ]
               }
             ]
@@ -162,6 +165,157 @@
       ]
     },
     {
+      "name": "close_item",
+      "discriminator": [
+        232,
+        80,
+        56,
+        56,
+        194,
+        171,
+        176,
+        235
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "store_config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  111,
+                  114,
+                  101,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103,
+                  95,
+                  118,
+                  51
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "item",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  105,
+                  116,
+                  101,
+                  109,
+                  95,
+                  118,
+                  50
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "name"
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "_name",
+          "type": "string"
+        }
+      ]
+    },
+    {
+      "name": "delete_legacy_item",
+      "discriminator": [
+        166,
+        68,
+        15,
+        247,
+        155,
+        141,
+        2,
+        217
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "store_config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  111,
+                  114,
+                  101,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103,
+                  95,
+                  118,
+                  51
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "legacy_item",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  105,
+                  116,
+                  101,
+                  109
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "name"
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "_name",
+          "type": "string"
+        }
+      ]
+    },
+    {
       "name": "initialize_store",
       "discriminator": [
         109,
@@ -196,7 +350,7 @@
                   103,
                   95,
                   118,
-                  50
+                  51
                 ]
               }
             ]
@@ -350,7 +504,7 @@
                   103,
                   95,
                   118,
-                  50
+                  51
                 ]
               }
             ]
@@ -367,7 +521,10 @@
                   105,
                   116,
                   101,
-                  109
+                  109,
+                  95,
+                  118,
+                  50
                 ]
               },
               {
@@ -497,7 +654,7 @@
                   103,
                   95,
                   118,
-                  50
+                  51
                 ]
               }
             ]
@@ -518,6 +675,82 @@
           "type": "pubkey"
         }
       ]
+    },
+    {
+      "name": "toggle_item_status",
+      "discriminator": [
+        141,
+        137,
+        16,
+        138,
+        11,
+        252,
+        38,
+        94
+      ],
+      "accounts": [
+        {
+          "name": "item",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  105,
+                  116,
+                  101,
+                  109,
+                  95,
+                  118,
+                  50
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "item.name",
+                "account": "StoreItem"
+              }
+            ]
+          }
+        },
+        {
+          "name": "store_config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  111,
+                  114,
+                  101,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103,
+                  95,
+                  118,
+                  51
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "store_config"
+          ]
+        }
+      ],
+      "args": []
     },
     {
       "name": "update_config",
@@ -554,7 +787,7 @@
                   103,
                   95,
                   118,
-                  50
+                  51
                 ]
               }
             ]
@@ -600,7 +833,10 @@
                   105,
                   116,
                   101,
-                  109
+                  109,
+                  95,
+                  118,
+                  50
                 ]
               },
               {
@@ -632,7 +868,7 @@
                   103,
                   95,
                   118,
-                  50
+                  51
                 ]
               }
             ]
@@ -860,6 +1096,10 @@
           {
             "name": "image_url",
             "type": "string"
+          },
+          {
+            "name": "is_active",
+            "type": "bool"
           },
           {
             "name": "bump",

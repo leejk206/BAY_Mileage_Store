@@ -65,6 +65,8 @@ export default function AdminPage() {
   // Legacy v1 cleanup form
   const [legacyName, setLegacyName] = useState("");
   const [legacyDeleting, setLegacyDeleting] = useState(false);
+  // v2 item close (delete) – 진행 중인 아이템 publicKey
+  const [closingItemPk, setClosingItemPk] = useState<string | null>(null);
 
   // v3 StoreConfig PDA derived from seeds; no longer read from env PDA
   const storeConfigPda = useMemo(() => {
@@ -615,8 +617,21 @@ export default function AdminPage() {
       setError(null);
       setLegacyDeleting(true);
 
+      // 카탈로그에 존재하는 아이템인지 먼저 확인 (name 또는 displayName 기준)
+      const target = items.find(
+        (i) => i.name === trimmed || i.displayName === trimmed
+      );
+      if (!target) {
+        console.warn("카탈로그에 존재하지 않는 아이템 이름입니다:", trimmed);
+        setError("현재 카탈로그에 존재하지 않는 Name(ID) 입니다.");
+        return;
+      }
+
+      // 실제 PDA 시드는 내부 ID(name)를 사용하므로, displayName 을 넣었더라도 name 기준으로 계산
+      const seedName = target.name;
+
       const [legacyItemPda] = PublicKey.findProgramAddressSync(
-        [Buffer.from("item"), Buffer.from(trimmed)],
+        [Buffer.from("item"), Buffer.from(seedName)],
         new PublicKey(env.NEXT_PUBLIC_PROGRAM_ID)
       );
 
@@ -645,6 +660,37 @@ export default function AdminPage() {
       }
     } finally {
       setLegacyDeleting(false);
+    }
+  }
+
+  async function handleCloseItem(item: StoreItem) {
+    if (!program || !publicKey) return;
+    try {
+      setError(null);
+      setClosingItemPk(item.publicKey);
+
+      await (program as any).methods
+        .closeItem(item.name)
+        .accounts({
+          authority: publicKey,
+          storeConfig: storeConfigPda,
+          item: new PublicKey(item.publicKey),
+        })
+        .rpc();
+
+      if (typeof window !== "undefined") {
+        window.alert("v2 아이템이 삭제되었고 SOL이 환수되었습니다.");
+      }
+      setItems((prev) => prev.filter((i) => i.publicKey !== item.publicKey));
+    } catch (e: any) {
+      const msg: string = e?.message ?? "";
+      if (msg.includes("429") || msg.includes("Too Many Requests")) {
+        setError("네트워크 요청이 많습니다. 잠시 후 다시 시도해주세요");
+      } else {
+        setError(msg || "Failed to close item");
+      }
+    } finally {
+      setClosingItemPk(null);
     }
   }
 
@@ -842,6 +888,43 @@ export default function AdminPage() {
                 {legacyDeleting ? "Deleting..." : "Delete Legacy Item"}
               </NeonButton>
             </form>
+          </GlassCard>
+          <GlassCard className="md:col-span-2 border-amber-500/50 bg-amber-500/5">
+            <h2 className="text-sm font-semibold text-amber-300">
+              Delete v2 Item (Close & Reclaim SOL)
+            </h2>
+            <p className="mt-1 text-[0.8rem] text-amber-200/90">
+              현재 카탈로그에 표시되는 아이템(v2)을 완전히 삭제하고, 묶여 있던
+              렌트비(SOL)를 관리자 지갑으로 환수합니다. 되돌릴 수 없습니다.
+            </p>
+            {items.length === 0 ? (
+              <p className="mt-3 text-[0.8rem] text-gray-400">
+                삭제할 v2 아이템이 없습니다.
+              </p>
+            ) : (
+              <ul className="mt-3 space-y-2">
+                {items.map((item) => (
+                  <li
+                    key={item.publicKey}
+                    className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-400/30 bg-black/30 px-3 py-2"
+                  >
+                    <span className="text-sm text-gray-200">
+                      {item.displayName} ({item.name})
+                    </span>
+                    <NeonButton
+                      type="button"
+                      onClick={() => handleCloseItem(item)}
+                      disabled={closingItemPk === item.publicKey}
+                      className="bg-amber-600/80 hover:bg-amber-500"
+                    >
+                      {closingItemPk === item.publicKey
+                        ? "삭제 중..."
+                        : "삭제 (close & SOL 회수)"}
+                    </NeonButton>
+                  </li>
+                ))}
+              </ul>
+            )}
           </GlassCard>
           <GlassCard className="md:col-span-2">
             <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
