@@ -130,6 +130,37 @@ pub mod bay_mileage_store {
         Ok(())
     }
 
+    pub fn delete_legacy_item(
+        ctx: Context<DeleteLegacyItem>,
+        _name: String,
+    ) -> Result<()> {
+        let config = &ctx.accounts.store_config;
+        // 관리자(또는 루트 authority)가 아닌 경우 거부
+        require!(
+            config.admins.contains(&ctx.accounts.authority.key()),
+            BayError::UnauthorizedAdmin
+        );
+
+        let legacy = &mut ctx.accounts.legacy_item;
+        let authority = &mut ctx.accounts.authority;
+
+        // lamports 회수
+        let legacy_lamports = legacy.lamports();
+        **authority.lamports.borrow_mut() = authority
+            .lamports()
+            .checked_add(legacy_lamports)
+            .ok_or(ErrorCode::AccountDidNotSerialize)?;
+        **legacy.lamports.borrow_mut() = 0;
+
+        // 데이터 0으로 덮어쓰기
+        let mut data = legacy.data.borrow_mut();
+        for byte in data.iter_mut() {
+            *byte = 0;
+        }
+
+        Ok(())
+    }
+
     pub fn purchase(ctx: Context<Purchase>) -> Result<()> {
         let item_price = ctx.accounts.item.price;
         let item_stock = ctx.accounts.item.stock;
@@ -410,6 +441,28 @@ pub struct RemoveAdmin<'info> {
 
     #[account(mut)]
     pub authority: Signer<'info>,
+}
+
+#[derive(Accounts)]
+#[instruction(name: String)]
+pub struct DeleteLegacyItem<'info> {
+    #[account(mut)]
+    pub authority: Signer<'info>,
+
+    #[account(
+        seeds = [b"store_config_v3"],
+        bump = store_config.bump,
+        has_one = authority,
+    )]
+    pub store_config: Account<'info, StoreConfig>,
+
+    /// CHECK: Legacy v1 item to be closed
+    #[account(
+        mut,
+        seeds = [b"item", name.as_bytes()],
+        bump,
+    )]
+    pub legacy_item: AccountInfo<'info>,
 }
 
 // -- Custom Errors -----------------------------------------------------------

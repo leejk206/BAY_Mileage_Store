@@ -62,6 +62,9 @@ export default function AdminPage() {
 
   // Admin management form
   const [newAdminAddress, setNewAdminAddress] = useState("");
+  // Legacy v1 cleanup form
+  const [legacyName, setLegacyName] = useState("");
+  const [legacyDeleting, setLegacyDeleting] = useState(false);
 
   // v3 StoreConfig PDA derived from seeds; no longer read from env PDA
   const storeConfigPda = useMemo(() => {
@@ -599,6 +602,52 @@ export default function AdminPage() {
     }
   }
 
+  async function handleDeleteLegacyItem(e: FormEvent) {
+    e.preventDefault();
+    if (!program || !publicKey) return;
+    console.log("🚨 Delete Button Clicked! Target Name:", legacyName);
+    const trimmed = legacyName.trim();
+    if (!trimmed) {
+      console.warn("이름이 비어있습니다!");
+      return;
+    }
+    try {
+      setError(null);
+      setLegacyDeleting(true);
+
+      const [legacyItemPda] = PublicKey.findProgramAddressSync(
+        [Buffer.from("item"), Buffer.from(trimmed)],
+        new PublicKey(env.NEXT_PUBLIC_PROGRAM_ID)
+      );
+
+      await (program as any).methods
+        .deleteLegacyItem(trimmed)
+        .accounts({
+          authority: publicKey,
+          storeConfig: storeConfigPda,
+          legacyItem: legacyItemPda,
+        })
+        .rpc();
+
+      // v1 아이템 삭제 성공 알림 및 입력 초기화
+      if (typeof window !== "undefined") {
+        window.alert(
+          "v1 아이템이 성공적으로 삭제되고 SOL이 환수되었습니다."
+        );
+      }
+      setLegacyName("");
+    } catch (e: any) {
+      const msg: string = e?.message ?? "";
+      if (msg.includes("429") || msg.includes("Too Many Requests")) {
+        setError("네트워크 요청이 많습니다. 잠시 후 다시 시도해주세요");
+      } else {
+        setError(msg || "Failed to delete legacy item");
+      }
+    } finally {
+      setLegacyDeleting(false);
+    }
+  }
+
   async function handleAddAdmin(e: FormEvent) {
     e.preventDefault();
     if (!program || !publicKey) return;
@@ -763,6 +812,37 @@ export default function AdminPage() {
               </NeonButton>
             </form>
           </GlassCard>
+          <GlassCard className="md:col-span-2 border-red-500/50 bg-red-500/5">
+            <h2 className="text-sm font-semibold text-red-300">
+              Legacy v1 Item Cleanup
+            </h2>
+            <p className="mt-1 text-[0.8rem] text-red-200/90">
+              예전 버전(v1) 시드로 생성된 아이템 PDA를 완전히 삭제하고, 묶여
+              있던 렌트비(SOL)를 관리자 지갑으로 환수합니다.{" "}
+              <span className="font-semibold">
+                되돌릴 수 없으므로 정확한 Name(ID)를 입력하세요.
+              </span>
+            </p>
+            <form
+              onSubmit={handleDeleteLegacyItem}
+              className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center"
+            >
+              <input
+                type="text"
+                value={legacyName}
+                onChange={(e) => setLegacyName(e.target.value)}
+                placeholder="Legacy item Name (ID)"
+                className="flex-1 rounded-xl border border-red-400/40 bg-black/40 px-4 py-2 text-sm text-red-50 placeholder:text-red-300/60 focus:outline-none focus:ring-2 focus:ring-red-400 focus:border-red-400"
+              />
+              <NeonButton
+                type="submit"
+                disabled={legacyDeleting || !legacyName.trim()}
+                className="bg-red-600/80 hover:bg-red-500"
+              >
+                {legacyDeleting ? "Deleting..." : "Delete Legacy Item"}
+              </NeonButton>
+            </form>
+          </GlassCard>
           <GlassCard className="md:col-span-2">
             <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
               <div>
@@ -885,10 +965,21 @@ export default function AdminPage() {
             </form>
           </GlassCard>
 
-          <GlassCard>
-            <h2 className="text-sm font-semibold text-gray-100">
-              Update Item
-            </h2>
+          <GlassCard
+            className={
+              selectedItem?.isActive === false ? "opacity-60 transition" : ""
+            }
+          >
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-gray-100">
+                Update Item
+              </h2>
+              {selectedItem && selectedItem.isActive === false && (
+                <span className="inline-flex items-center rounded-full border border-red-400/60 bg-red-500/20 px-2 py-0.5 text-[0.7rem] font-medium text-red-200">
+                  Hidden
+                </span>
+              )}
+            </div>
             {itemsLoading && (
               <p className="mt-2 text-[0.8rem] text-gray-400">
                 Loading items from chain...
