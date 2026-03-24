@@ -6,6 +6,11 @@ use anchor_spl::{
 
 declare_id!("8vLkdQq3Ya6ZRx4ApVLsBC6s1aLbS5dkEH29fJa8oMuW");
 
+/// 루트 authority 이거나 admins 목록에 포함된 지갑만 상점 운영(아이템 등) 권한으로 인정
+fn is_authorized_admin(config: &StoreConfig, signer: &Pubkey) -> bool {
+    config.authority == *signer || config.admins.contains(signer)
+}
+
 #[program]
 pub mod bay_mileage_store {
     use super::*;
@@ -35,10 +40,9 @@ pub mod bay_mileage_store {
         // 이미지 URL 은 1024자까지 허용
         require!(image_url.len() <= 1024, BayError::NameTooLong);
 
-        // 관리자 목록에 포함된 지갑만 아이템을 추가할 수 있음
         let config = &ctx.accounts.store_config;
         require!(
-            config.admins.contains(&ctx.accounts.authority.key()),
+            is_authorized_admin(config, &ctx.accounts.authority.key()),
             BayError::UnauthorizedAdmin
         );
 
@@ -65,7 +69,7 @@ pub mod bay_mileage_store {
 
         let config = &ctx.accounts.store_config;
         require!(
-            config.admins.contains(&ctx.accounts.authority.key()),
+            is_authorized_admin(config, &ctx.accounts.authority.key()),
             BayError::UnauthorizedAdmin
         );
 
@@ -82,10 +86,8 @@ pub mod bay_mileage_store {
         new_bay_mint: Pubkey,
     ) -> Result<()> {
         let config = &mut ctx.accounts.store_config;
-        require!(
-            config.admins.contains(&ctx.accounts.authority.key()),
-            BayError::UnauthorizedAdmin
-        );
+        // 루트 전용: has_one 과 동일하게 명시 검증
+        require_keys_eq!(config.authority, ctx.accounts.authority.key());
         config.bay_mint = new_bay_mint;
         Ok(())
     }
@@ -121,7 +123,7 @@ pub mod bay_mileage_store {
     pub fn toggle_item_status(ctx: Context<ToggleItemStatus>) -> Result<()> {
         let config = &ctx.accounts.store_config;
         require!(
-            config.admins.contains(&ctx.accounts.authority.key()),
+            is_authorized_admin(config, &ctx.accounts.authority.key()),
             BayError::UnauthorizedAdmin
         );
 
@@ -133,7 +135,7 @@ pub mod bay_mileage_store {
     pub fn close_item(ctx: Context<CloseItem>, _name: String) -> Result<()> {
         let config = &ctx.accounts.store_config;
         require!(
-            config.admins.contains(&ctx.accounts.authority.key()),
+            is_authorized_admin(config, &ctx.accounts.authority.key()),
             BayError::UnauthorizedAdmin
         );
         // item 계정은 close = authority 로 lamports 회수 후 소멸됨
@@ -145,9 +147,8 @@ pub mod bay_mileage_store {
         _name: String,
     ) -> Result<()> {
         let config = &ctx.accounts.store_config;
-        // 관리자(또는 루트 authority)가 아닌 경우 거부
         require!(
-            config.admins.contains(&ctx.accounts.authority.key()),
+            is_authorized_admin(config, &ctx.accounts.authority.key()),
             BayError::UnauthorizedAdmin
         );
 
@@ -179,7 +180,9 @@ pub mod bay_mileage_store {
         require_gte!(buyer_amount, item_price, BayError::InsufficientFunds);
         require!(item_stock > 0, BayError::OutOfStock);
 
-        ctx.accounts.item.stock -= 1;
+        ctx.accounts.item.stock = item_stock
+            .checked_sub(1)
+            .ok_or(BayError::OutOfStock)?;
 
         let cpi_ctx = CpiContext::new(
             ctx.accounts.token_program.to_account_info(),
@@ -302,7 +305,6 @@ pub struct AddItem<'info> {
     #[account(
         seeds = [b"store_config_v3"],
         bump = store_config.bump,
-        has_one = authority,
     )]
     pub store_config: Account<'info, StoreConfig>,
 
@@ -383,7 +385,6 @@ pub struct UpdateItem<'info> {
     #[account(
         seeds = [b"store_config_v3"],
         bump = store_config.bump,
-        has_one = authority,
     )]
     pub store_config: Account<'info, StoreConfig>,
 
@@ -417,7 +418,6 @@ pub struct ToggleItemStatus<'info> {
     #[account(
         seeds = [b"store_config_v3"],
         bump = store_config.bump,
-        has_one = authority,
     )]
     pub store_config: Account<'info, StoreConfig>,
 
